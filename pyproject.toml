@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arm-gym"
+version = "0.1.0"
+description = "GRPO environment for ARM AArch64 assembly superoptimization"
+requires-python = ">=3.10"
+dependencies = [
+  "torch>=2.3",
+  "transformers>=4.44",
+  "trl>=0.11",
+  "peft>=0.12",
+  "accelerate>=0.33",
+  "datasets>=2.20",
+  "numpy>=1.26",
+  "pydantic>=2.7",
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+unsloth = ["unsloth>=2024.10"]
+vllm = ["vllm>=0.6"]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
+
+[tool.setuptools.packages.find]
+include = ["arm_gym*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
