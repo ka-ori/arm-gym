@@ -41,9 +41,9 @@ flowchart LR
     K --> L["GRPO<br/>z-score [-1.5, 1.5]"]
     L --> D
 
-    style F fill:#f96,stroke:#333
-    style J fill:#69f,stroke:#333
-    style L fill:#6c6,stroke:#333
+    style F fill:#f96,stroke:#333,color:#000
+    style J fill:#69f,stroke:#333,color:#000
+    style L fill:#6c6,stroke:#333,color:#000
 ```
 
 ### Multi-Agent Variant (Stretch Goal)
@@ -57,8 +57,8 @@ flowchart LR
     V -->|"Speedup"| R1["Optimizer Reward"]
     V -->|"Token Match"| R2["Analyzer Credit"]
 
-    style AN fill:#f9c,stroke:#333
-    style OPT fill:#9cf,stroke:#333
+    style AN fill:#f9c,stroke:#333,color:#000
+    style OPT fill:#9cf,stroke:#333,color:#000
 ```
 
 ### Curriculum Progression
@@ -69,10 +69,10 @@ flowchart LR
     S2 -->|"80% variants ≥1.05x"| S3["Stage 3: Loops<br/>matmul, softmax"]
     S3 -->|"Beat -O3 mean"| S4["Stage 4: SVE2<br/>(Stretch)"]
 
-    style S1 fill:#bfb,stroke:#333
-    style S2 fill:#fbf,stroke:#333
-    style S3 fill:#bbf,stroke:#333
-    style S4 fill:#fbb,stroke:#333
+    style S1 fill:#bfb,stroke:#333,color:#000
+    style S2 fill:#fbf,stroke:#333,color:#000
+    style S3 fill:#bbf,stroke:#333,color:#000
+    style S4 fill:#fbb,stroke:#333,color:#000
 ```
 
 ---
