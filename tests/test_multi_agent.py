@@ -1,5 +1,10 @@
-from arm_gym.multi_agent import (analyzer_credit, build_optimizer_prompt,
-                                 parse_analyzer_output, per_role_reward, OpportunityToken)
+from arm_gym.multi_agent import (
+    OpportunityToken,
+    analyzer_credit,
+    build_optimizer_prompt,
+    parse_analyzer_output,
+    per_role_reward,
+)
 
 
 def test_parses_strict_json_array():

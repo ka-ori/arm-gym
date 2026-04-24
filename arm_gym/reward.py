@@ -11,6 +11,7 @@ computation. Bound: [-1.5, 1.5].
 """
 
 from __future__ import annotations
+
 import statistics
 from dataclasses import dataclass
 from typing import Literal

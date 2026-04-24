@@ -7,11 +7,11 @@ winning Optimizer completion (token-match heuristic).
 """
 
 from __future__ import annotations
+
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
-
 
 OPPORTUNITY_KINDS = Literal[
     "vectorize_neon", "use_ldp_stp", "fuse_multiply_add", "replace_branch_with_csel",

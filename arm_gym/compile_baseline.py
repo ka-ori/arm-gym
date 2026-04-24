@@ -5,13 +5,12 @@ fall back to -mcpu=neoverse-v2 and *disclose* (not silently downgrade).
 """
 
 from __future__ import annotations
-import os
+
 import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-
 
 CLANG_CANDIDATES = ["clang-21", "clang-20", "clang"]
 GCC_AARCH64 = "aarch64-linux-gnu-gcc"

@@ -11,6 +11,7 @@ Strategy:
 """
 
 from __future__ import annotations
+
 import argparse
 import json
 import statistics
@@ -20,7 +21,6 @@ from pathlib import Path
 from arm_gym.compile_baseline import compile_to_asm, detect_toolchain
 from arm_gym.kernels import generate_all
 from arm_gym.mca import run_mca
-
 
 OPT_LEVELS = ("-O0", "-O1", "-O2", "-O3")
 

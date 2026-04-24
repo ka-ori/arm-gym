@@ -14,13 +14,13 @@ fast_inference=True when Unsloth stack is live.
 """
 
 from __future__ import annotations
+
 import argparse
 import importlib.util
 import os
 import sys
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 TrainStack = Literal["unsloth_vllm", "plain_trl_ddp", "single_gpu"]
 
@@ -54,7 +54,7 @@ def detect_stack() -> TrainStack:
     return "single_gpu"
 
 
-def smoke_day0_correctness(env, model_id: str, n_samples: int = 32) -> float:
+def smoke_day0_correctness(env: Any, model_id: str, n_samples: int = 32) -> float:
     """Return fraction of correct rollouts on held-out variants at step 0.
 
     Used to decide SFT warmup. Uses the model's zero-shot generation.
@@ -67,7 +67,7 @@ def smoke_day0_correctness(env, model_id: str, n_samples: int = 32) -> float:
     return 0.6
 
 
-def maybe_sft_warmup(cfg: TrainConfig, env) -> bool:
+def maybe_sft_warmup(cfg: TrainConfig, env: Any) -> bool:
     """Weaker flag 4: SFT warmup path if base correctness < 40%."""
     if cfg.skip_sft:
         return False
@@ -81,7 +81,7 @@ def maybe_sft_warmup(cfg: TrainConfig, env) -> bool:
     return True
 
 
-def build_grpo_config(cfg: TrainConfig):
+def build_grpo_config(cfg: TrainConfig) -> Any:
     from trl import GRPOConfig
     return GRPOConfig(
         output_dir=cfg.output_dir,
@@ -97,7 +97,7 @@ def build_grpo_config(cfg: TrainConfig):
     )
 
 
-def load_model_unsloth(cfg: TrainConfig):
+def load_model_unsloth(cfg: TrainConfig) -> tuple[Any, Any]:
     from unsloth import FastLanguageModel
     model, tok = FastLanguageModel.from_pretrained(
         model_name=cfg.model_id,
@@ -117,9 +117,9 @@ def load_model_unsloth(cfg: TrainConfig):
     return model, tok
 
 
-def load_model_plain(cfg: TrainConfig):
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+def load_model_plain(cfg: TrainConfig) -> tuple[Any, Any]:
     from peft import LoraConfig, get_peft_model
+    from transformers import AutoModelForCausalLM, AutoTokenizer
     tok = AutoTokenizer.from_pretrained(cfg.model_id)
     model = AutoModelForCausalLM.from_pretrained(cfg.model_id, torch_dtype="auto")
     lora = LoraConfig(

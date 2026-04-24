@@ -6,24 +6,46 @@ build-backend = "setuptools.build_meta"
 name = "arm-gym"
 version = "0.1.0"
 description = "GRPO environment for ARM AArch64 assembly superoptimization"
+readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.10"
+authors = [
+    {name = "(dot)mkv", email = "mahirabdofficial@gmail.com"},
+]
+keywords = ["arm", "aarch64", "assembly", "grpo", "reinforcement-learning", "openenv"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
-  "torch>=2.3",
-  "transformers>=4.44",
-  "trl>=0.11",
-  "peft>=0.12",
-  "accelerate>=0.33",
-  "datasets>=2.20",
-  "numpy>=1.26",
-  "pydantic>=2.7",
-  "fastapi>=0.115",
-  "uvicorn>=0.30",
+    "numpy>=1.26",
+    "pydantic>=2.7",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "websockets>=12.0",
 ]
 
 [project.optional-dependencies]
+train = [
+    "torch>=2.3",
+    "transformers>=4.44",
+    "trl>=0.11",
+    "peft>=0.12",
+    "accelerate>=0.33",
+    "datasets>=2.20",
+]
 unsloth = ["unsloth>=2024.10"]
 vllm = ["vllm>=0.6"]
-dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10", "httpx>=0.27", "pytest-asyncio>=0.24"]
+
+[project.scripts]
+arm-gym-train = "arm_gym.train:main"
+
+[project.urls]
+Homepage = "https://huggingface.co/spaces/dot-mkv/arm-gym"
+Repository = "https://github.com/dot-mkv/arm-gym"
+Issues = "https://github.com/dot-mkv/arm-gym/issues"
 
 [tool.setuptools.packages.find]
 include = ["arm_gym*"]
@@ -32,6 +54,16 @@ include = ["arm_gym*"]
 line-length = 100
 target-version = "py310"
 
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
+asyncio_mode = "auto"

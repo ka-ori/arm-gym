@@ -6,10 +6,11 @@ has a stable id (template + param hash) so held-out splits do not leak.
 """
 
 from __future__ import annotations
+
+import itertools
 from dataclasses import dataclass
 from hashlib import sha1
 from typing import Callable, Iterable
-import itertools
 
 
 @dataclass(frozen=True)
@@ -219,16 +220,28 @@ _ALL_NUM = _FLOAT_DTYPES + _INT_DTYPES
 TEMPLATES: dict[str, KernelTemplate] = {
     t.name: t for t in [
         KernelTemplate("vec_add", 1, {"n": _SIZES_SMALL, "dtype": _ALL_NUM}, _render_vec_add),
-        KernelTemplate("dot", 1, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES + _INT_DTYPES}, _render_dot),
+        KernelTemplate(
+            "dot", 1, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES + _INT_DTYPES},
+            _render_dot,
+        ),
         KernelTemplate("saxpy", 1, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES}, _render_saxpy),
         KernelTemplate("relu", 1, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES}, _render_relu),
         KernelTemplate("max_reduce", 1, {"n": _SIZES_SMALL, "dtype": _ALL_NUM}, _render_max_reduce),
-        KernelTemplate("l2_norm_sq", 1, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES}, _render_l2_norm_sq),
+        KernelTemplate(
+            "l2_norm_sq", 1, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES},
+            _render_l2_norm_sq,
+        ),
         KernelTemplate("popcount", 1, {"n": _SIZES_SMALL}, _render_popcount),
         KernelTemplate("abs_diff", 1, {"n": _SIZES_SMALL, "dtype": _ALL_NUM}, _render_abs_diff),
         KernelTemplate("clip", 1, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES}, _render_clip),
-        KernelTemplate("elementwise_fma", 2, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES}, _render_elementwise_fma),
-        KernelTemplate("conv1d_3", 2, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES}, _render_conv1d_3),
+        KernelTemplate(
+            "elementwise_fma", 2, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES},
+            _render_elementwise_fma,
+        ),
+        KernelTemplate(
+            "conv1d_3", 2, {"n": _SIZES_SMALL, "dtype": _FLOAT_DTYPES},
+            _render_conv1d_3,
+        ),
         KernelTemplate("gemv", 2, {"m": _SIZES_MATRIX, "n": _SIZES_MATRIX, "dtype": _FLOAT_DTYPES},
                        _render_gemv),
         KernelTemplate("transpose", 2, {"m": _SIZES_MATRIX, "n": _SIZES_MATRIX, "dtype": _ALL_NUM},
@@ -261,7 +274,8 @@ def split_train_eval(variants: list[KernelVariant], eval_frac: float = 0.1,
                      seed: int = 0) -> tuple[list[KernelVariant], list[KernelVariant]]:
     """Deterministic hash-based split — held-out eval IDs cannot leak."""
     rng_cut = int(eval_frac * 2**32)
-    train, evalset = [], []
+    train: list[KernelVariant] = []
+    evalset: list[KernelVariant] = []
     for v in variants:
         h = int(sha1(f"{seed}:{v.variant_id}".encode()).hexdigest()[:8], 16)
         (evalset if h < rng_cut else train).append(v)

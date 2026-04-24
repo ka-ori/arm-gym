@@ -6,11 +6,11 @@ mutations + ThreadPoolExecutor for QEMU invocations.
 """
 
 from __future__ import annotations
+
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Callable
-
 
 DEFAULT_N_TESTS = 20
 DEFAULT_WORKERS = min(8, (os.cpu_count() or 2))

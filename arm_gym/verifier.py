@@ -14,15 +14,15 @@ LLM-free throughout. No judge model.
 """
 
 from __future__ import annotations
+
 import json
-import math
 import os
 import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from .errors import ErrorKind, StructuredError, VerifierResult
 from .mca import McaReport, run_mca
@@ -43,6 +43,9 @@ class VerifierConfig:
     float_atol: float = 1e-8
 
 
+_ACTIVE_TEMP_DIRS: list[Path] = []
+
+
 def assemble(asm: str, cfg: VerifierConfig) -> tuple[Path | None, StructuredError | None]:
     d = Path(tempfile.mkdtemp(prefix="armgym_"))
     src = d / "k.s"
@@ -59,7 +62,15 @@ def assemble(asm: str, cfg: VerifierConfig) -> tuple[Path | None, StructuredErro
             line=line,
             column=col,
         )
+    _ACTIVE_TEMP_DIRS.append(d)
     return obj, None
+
+
+def cleanup_temp_dirs() -> None:
+    """Remove all temp dirs created by assemble(). Call after verify() completes."""
+    while _ACTIVE_TEMP_DIRS:
+        d = _ACTIVE_TEMP_DIRS.pop()
+        shutil.rmtree(d, ignore_errors=True)
 
 
 def _parse_as_error(stderr: str) -> tuple[int | None, int | None]:
@@ -87,24 +98,42 @@ def run_secondary_cycle_count(obj_path: Path, cfg: VerifierConfig,
         return None
 
 
-def load_baseline_distribution(variant_id: str) -> dict | None:
+def load_baseline_distribution(variant_id: str) -> dict[str, Any] | None:
     p = BASELINE_DIST_DIR / f"{variant_id}.json"
     if not p.exists():
         return None
     try:
-        return json.loads(p.read_text())
+        result: dict[str, Any] = json.loads(p.read_text())
+        return result
     except Exception:
         return None
 
 
-def sigma_sanity_ok(speedup: float, dist: dict) -> bool:
+def sigma_sanity_ok(speedup: float, dist: dict[str, Any]) -> bool:
     """Return False if speedup exceeds 3σ above historical mean for this variant."""
-    mean = dist.get("mean", 1.0)
-    std = dist.get("std", 0.1)
-    return speedup <= mean + 3.0 * max(std, 1e-6)
+    mean: float = dist.get("mean", 1.0)
+    std: float = dist.get("std", 0.1)
+    return bool(speedup <= mean + 3.0 * max(std, 1e-6))
 
 
 def verify(
+    asm: str,
+    baseline_asm: str,
+    variant_id: str,
+    tests: list[TestCase],
+    cfg: VerifierConfig,
+    run_correctness: Callable[[Path, TestCase], bool],
+    baseline_cycles: float,
+) -> VerifierResult:
+    try:
+        return _verify_inner(
+            asm, baseline_asm, variant_id, tests, cfg, run_correctness, baseline_cycles,
+        )
+    finally:
+        cleanup_temp_dirs()
+
+
+def _verify_inner(
     asm: str,
     baseline_asm: str,
     variant_id: str,
@@ -117,6 +146,7 @@ def verify(
     obj, err = assemble(asm, cfg)
     if err:
         return VerifierResult(ok=False, reward=0.0, error=err)
+    assert obj is not None  # assemble returns (Path, None) on success
 
     # Gate 2: adversarial correctness
     selected = select_adversarial(tests)
@@ -143,9 +173,10 @@ def verify(
     speedup = baseline_cycles / max(report.total_cycles, 1)
 
     # Secondary verifier: native instruction count
-    secondary = run_secondary_cycle_count(obj, cfg, selected[0] if selected else None)
+    secondary: int | None = None
+    if selected:
+        secondary = run_secondary_cycle_count(obj, cfg, selected[0])
     if secondary is not None and secondary > 0:
-        # Large disagreement (> 3×) signals proxy drift.
         ratio = max(report.total_cycles, secondary) / max(min(report.total_cycles, secondary), 1)
         if ratio > 3.0:
             return VerifierResult(
@@ -177,7 +208,7 @@ def verify(
 
     return VerifierResult(
         ok=True,
-        reward=0.0,  # reward.py computes final value from speedup
+        reward=0.0,
         agent_cycles=report.total_cycles,
         baseline_cycles=baseline_cycles,
         speedup=speedup,

@@ -1,5 +1,10 @@
-from arm_gym.rollout_budget import (TestCase, select_adversarial, run_parallel,
-                                    update_adversarial_ranks, DEFAULT_N_TESTS)
+from arm_gym.rollout_budget import (
+    DEFAULT_N_TESTS,
+    TestCase,
+    run_parallel,
+    select_adversarial,
+    update_adversarial_ranks,
+)
 
 
 def test_default_n_is_20_per_weaker_flag_3():
