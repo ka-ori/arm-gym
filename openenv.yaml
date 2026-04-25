@@ -1,0 +1,43 @@
+name: arm-gym
+version: 0.1.0
+description: >
+  GRPO environment for training a 7B LLM to emit ARM AArch64 assembly
+  that beats gcc -O3 on LLVM-MCA cycle estimates (Neoverse V2/V3).
+
+environment:
+  class: arm_gym.env.ARMGymEnv
+  supports_concurrent_sessions: true
+
+server:
+  module: arm_gym.env
+  app: app
+  framework: fastapi
+  port: 7860
+
+protocols:
+  websocket: /ws
+  http:
+    health: /health
+    reset: /reset
+    step: /step
+    state: /state
+    metadata: /metadata
+    schema: /schema
+    tasks: /tasks
+
+models:
+  action: arm_gym.env.CompilerAction
+  observation: arm_gym.env.CompilerObservation
+
+runtime:
+  python: ">=3.10"
+  dockerfile: Dockerfile
+  image_target_size: "<1GB"
+
+metadata:
+  team: (dot)mkv
+  hackathon: "Meta / HuggingFace OpenEnv Hackathon India 2026"
+  theme: "Wild Card (Theme 5)"
+  base_model: "Qwen/Qwen2.5-Coder-7B-Instruct"
+  reward: "binary_plus_speedup (LLM-free, deterministic)"
+  verifier: "3-gate (syntax → correctness → performance) + dual verifier"
