@@ -3,6 +3,11 @@
 Cut 1 fix: prefer LLVM 21 with -mcpu=neoverse-v2 as the Neoverse V3 proxy.
 neoverse-v3 is not yet in any LLVM release (Olympus is LLVM 22, NVIDIA-specific).
 Fallback is disclosed via mcpu_disclosed field, not silently swapped.
+
+mcpu selection probes both clang and gcc to find the best CPU both compilers
+actually support. Fallback chain: v3 → v2 → v1 → n2 → n1 → generic.
+GCC 12 (Debian Bookworm default) supports up to neoverse-v1.
+LLVM-MCA-15 supports neoverse-v1, so reward signal stays consistent.
 """
 
 from __future__ import annotations
@@ -13,9 +18,11 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-CLANG_CANDIDATES = ["clang-21", "clang-20", "clang"]
+CLANG_CANDIDATES = ["clang-21", "clang-20", "clang-17", "clang-16", "clang-15", "clang"]
 GCC_AARCH64 = "aarch64-linux-gnu-gcc"
-MCA_CANDIDATES = ["llvm-mca-21", "llvm-mca-20", "llvm-mca"]
+MCA_CANDIDATES = ["llvm-mca-21", "llvm-mca-20", "llvm-mca-17", "llvm-mca-16", "llvm-mca-15", "llvm-mca"]
+
+_MCPU_CHAIN = ["neoverse-v3", "neoverse-v2", "neoverse-v1", "neoverse-n2", "neoverse-n1", "generic"]
 
 
 def find_tool(candidates: list[str]) -> str | None:
@@ -31,7 +38,7 @@ class ToolchainInfo:
     gcc_aarch64: str | None
     mca: str | None
     mcpu: str  # actual -mcpu used
-    mcpu_disclosed: str | None  # e.g. "V2 proxy for V3" when fallback taken
+    mcpu_disclosed: str | None  # e.g. "V1 proxy for V3" when fallback taken
 
     def ready(self) -> bool:
         return bool(self.clang or self.gcc_aarch64)
@@ -41,23 +48,53 @@ def detect_toolchain(preferred_cpu: str = "neoverse-v3") -> ToolchainInfo:
     clang = find_tool(CLANG_CANDIDATES)
     gcc = shutil.which(GCC_AARCH64)
     mca = find_tool(MCA_CANDIDATES)
-    mcpu, disclosed = _pick_cpu(clang, preferred_cpu)
+    mcpu, disclosed = _pick_cpu(clang, gcc, preferred_cpu)
     return ToolchainInfo(clang=clang, gcc_aarch64=gcc, mca=mca, mcpu=mcpu, mcpu_disclosed=disclosed)
 
 
-def _pick_cpu(clang: str | None, preferred: str) -> tuple[str, str | None]:
-    if not clang:
-        return preferred, None
-    try:
-        out = subprocess.run([clang, "--print-supported-cpus"],
-                             capture_output=True, text=True, timeout=10)
-        supported = (out.stdout + out.stderr).lower()
-    except Exception:
-        return "neoverse-v2", f"V2 proxy for {preferred} (clang probe failed)"
-    if preferred.lower() in supported:
-        return preferred, None
-    # Cut 1 disclosure: document the downgrade rather than silently proxy.
-    return "neoverse-v2", f"V2 proxy for {preferred} (not in clang --print-supported-cpus)"
+def _gcc_probe_mcpu(gcc: str, preferred: str) -> tuple[str, str | None]:
+    """Find best mcpu the installed gcc actually accepts via test-compile."""
+    chain = [preferred] + [c for c in _MCPU_CHAIN if c != preferred]
+    for cpu in chain:
+        try:
+            r = subprocess.run(
+                [gcc, f"-mcpu={cpu}", "-S", "-x", "c", "-", "-o", "/dev/null"],
+                input="int f(void){return 0;}",
+                capture_output=True, text=True, timeout=5,
+            )
+            if r.returncode == 0:
+                disclosed = None if cpu == preferred else f"{cpu} proxy for {preferred} (gcc limit)"
+                return cpu, disclosed
+        except Exception:
+            continue
+    return "generic", f"generic fallback for {preferred}"
+
+
+def _pick_cpu(clang: str | None, gcc: str | None, preferred: str) -> tuple[str, str | None]:
+    """Probe available compilers to find best mcpu both support."""
+    if clang:
+        try:
+            # Must pass --target=aarch64-linux-gnu — without it, clang lists
+            # host (x86) CPUs and neoverse-* names are not present.
+            out = subprocess.run(
+                [clang, "--target=aarch64-linux-gnu", "--print-supported-cpus"],
+                capture_output=True, text=True, timeout=10,
+            )
+            supported = (out.stdout + out.stderr).lower()
+            chain = [preferred] + [c for c in _MCPU_CHAIN if c != preferred]
+            for cpu in chain:
+                if cpu.lower() in supported:
+                    disclosed = None if cpu == preferred else f"{cpu} proxy for {preferred} (clang limit)"
+                    return cpu, disclosed
+        except Exception:
+            pass
+
+    # No clang or clang probe failed — probe GCC directly by test-compiling.
+    if gcc:
+        return _gcc_probe_mcpu(gcc, preferred)
+
+    # No compiler to probe yet; return preferred and let compile_to_asm fail loudly.
+    return preferred, None
 
 
 def compile_to_asm(c_source: str, tc: ToolchainInfo, opt: str = "-O3") -> str:

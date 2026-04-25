@@ -37,6 +37,8 @@ adapters/
 *.gguf
 .next/
 excalidraw.log
+.ai-workflow/
+.mcp.json
 
 .omc/
 .omg/
