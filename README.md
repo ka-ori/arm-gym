@@ -62,15 +62,6 @@ Training run: Qwen2.5-Coder-3B-Instruct, LoRA r=8, 200 steps on a single Kaggle 
 | MCA cycles: trained model | 145 cycles (vec_add) |
 | Reference (SuperCoder, x86-64) | 1.46x over `gcc -O3` |
 
-### Training plots
-
-| Plot | What it shows |
-|------|---------------|
-| `colab/results/plots/training_loss.png` | GRPO loss over 200 steps |
-| `colab/results/plots/reward_curve.png` | Mean reward per step |
-| `colab/results/plots/correctness_rate.png` | Gate 2 (QEMU) pass rate per step window |
-| `colab/results/plots/before_after_kernel.png` | gcc -O3 (412 cycles) vs trained (145 cycles) on vec_add |
-
 ---
 
 ## How it works
