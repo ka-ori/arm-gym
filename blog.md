@@ -98,22 +98,27 @@ From these 15 templates, we generate 523 variants by varying sizes, data types (
 Here is exactly how training works, step by step:
 
 ```mermaid
-graph LR
-    A["C Kernel: 15 templates x 523 variants"] --> B["gcc -O3 baseline asm"]
-    B --> C["LLM prompt: C + baseline asm"]
-    C --> D["Qwen2.5-Coder-7B + LoRA"]
-    D --> E["Agent assembly"]
+flowchart LR
+    A["C Kernel<br/>(15 templates × 523 variants)"]
+        --> B["gcc -O3<br/>Baseline Assembly"]
+    B --> C["LLM Prompt<br/>(C + Baseline ASM)"]
+    C --> D["Qwen2.5-Coder-7B<br/>+ LoRA"]
+    D --> E["Agent Assembly"]
+
     E --> F{"3-Gate Verifier"}
-    F -->|Syntax| G["GNU as"]
-    F -->|Correctness| H["QEMU: 20 adversarial tests"]
-    F -->|Performance| I["LLVM-MCA Neoverse V2"]
-    I --> J["Dual verifier cross-check"]
-    J --> K["Reward clip speedup"]
-    K --> L["GRPO update"]
+
+    F -->|"Gate 1: Syntax"| G["GNU as"]
+    F -->|"Gate 2: Correctness"| H["QEMU × 20<br/>Adversarial Tests"]
+    F -->|"Gate 3: Performance"| I["LLVM-MCA<br/>Neoverse V2"]
+
+    I --> J["Dual Verifier<br/>Cross-Check"]
+    J --> K["Reward<br/>max(0, speedup - 1)"]
+    K --> L["GRPO Update"]
     L --> D
-    style F fill:#ff9966
-    style J fill:#6699ff
-    style L fill:#66cc66
+
+    style F fill:#f96,stroke:#333,color:#000
+    style J fill:#69f,stroke:#333,color:#000
+    style L fill:#6c6,stroke:#333,color:#000
 ```
 
 **Step 1 - Sample a kernel.** Pick one of the 523 variants at random. This is the function the model needs to optimize.
@@ -167,14 +172,16 @@ The zero floor is not arbitrary. In GRPO, rewards within a group are z-score nor
 Not all kernels are equally hard. Sending the model to optimize a tiled matrix multiply before it has learned to write syntactically valid assembly is wasteful. ARM-Gym uses a staged curriculum that matches kernel difficulty to the model's current capability.
 
 ```mermaid
-graph LR
-    S1["Stage 1 Scalar: vec_add, dot, saxpy"] -->|80pct ge 1.05x| S2["Stage 2 NEON: gemv, conv1d, fma"]
-    S2 -->|80pct ge 1.05x| S3["Stage 3 Loops: matmul, softmax"]
-    S3 -->|Beat gcc minus O3 mean| S4["Stage 4 SVE2 stretch"]
-    style S1 fill:#bbffbb
-    style S2 fill:#ffbbff
-    style S3 fill:#bbbbff
-    style S4 fill:#ffbbbb
+flowchart LR
+    S1["Stage 1: Scalar<br/>vec_add, dot, saxpy"]
+        -->|"80% variants ≥ 1.05x"| S2["Stage 2: NEON<br/>gemv, conv1d, fma"]
+    S2 -->|"80% variants ≥ 1.05x"| S3["Stage 3: Loops<br/>matmul, softmax"]
+    S3 -->|"Beat -O3 mean"| S4["Stage 4: SVE2<br/>(Stretch)"]
+
+    style S1 fill:#bfb,stroke:#333,color:#000
+    style S2 fill:#fbf,stroke:#333,color:#000
+    style S3 fill:#bbf,stroke:#333,color:#000
+    style S4 fill:#fbb,stroke:#333,color:#000
 ```
 
 **Stage 1 - Scalar kernels.** Functions like `vec_add` and `saxpy` where the compiler produces a scalar loop. NEON vectorization (processing 4 floats at once instead of 1) is the primary optimization opportunity. This is learnable early because the pattern is consistent.
