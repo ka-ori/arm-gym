@@ -49,6 +49,8 @@ Any improvement in how efficiently code runs on ARM does not just touch one prod
 
 ARM-Gym did not emerge from nothing. It stands on a lineage of research that moved, over five years, from "can RL find faster algorithms?" to "can an LLM learn to beat the compiler?"
 
+![Research lineage: AlphaDev → LLM Compiler → Compiler-R1 → SuperCoder → ARM-Gym](https://huggingface.co/spaces/kaori02/arm-gym/resolve/main/blog-diagrams/diagram1_timeline.png)
+
 ### DeepMind AlphaDev (2023): RL discovers a sorting algorithm 70% faster than libc++
 
 In 2023, DeepMind published [AlphaDev](https://www.nature.com/articles/s41586-023-06004-9) in *Nature*. They applied AlphaZero, the same MCTS-based system that mastered chess and Go, to x86 assembly generation. The task: discover a sorting algorithm faster than the hand-tuned one in LLVM's standard library.
@@ -109,6 +111,8 @@ From 15 templates, we generate **649 variants** by varying sizes, data types (fl
 
 ### The training loop in plain English
 
+![ARM-Gym training loop: C kernel → compiler baseline → LLM → 3-gate verifier → GRPO](https://huggingface.co/spaces/kaori02/arm-gym/resolve/main/blog-diagrams/diagram_training_loop.png)
+
 Every training step works the same way:
 
 1. **Pick a kernel.** Sample one of the 649 variants at random.
@@ -141,6 +145,8 @@ WS   /ws     → same operations over WebSocket for lower latency
 ```
 
 When the model produces broken assembly, it gets back exactly what went wrong: the error kind, the line number, the assembler message. The next generation can self-correct. No reward, but structured feedback instead of silence.
+
+![Curriculum progression: Stage 1 Scalar → Stage 2 NEON → Stage 3 Loops → Stage 4 SVE2](https://huggingface.co/spaces/kaori02/arm-gym/resolve/main/blog-diagrams/diagram_curriculum.png)
 
 The curriculum logic, advancing from scalar kernels to NEON to full loops when 80% of the current stage's variants pass, lives entirely inside the environment server. The trainer is unaware of it. It just calls `reset` and `step`.
 
