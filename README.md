@@ -1,14 +1,3 @@
----
-title: ARM-Gym
-colorFrom: indigo
-colorTo: pink
-sdk: docker
-app_port: 7860
-pinned: false
-license: mit
-short_description: RL agent that writes ARM assembly faster than the compiler
----
-
 <p align="center">
   <strong>ARM-Gym</strong><br>
   <em>An RL agent that writes ARM assembly faster than the compiler</em>
