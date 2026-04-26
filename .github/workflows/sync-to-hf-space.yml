@@ -1,0 +1,42 @@
+# Sync GitHub ka-ori/arm-gym → Hugging Face Space https://huggingface.co/spaces/kaori02/arm-gym
+# (branch main → Space branch main).
+#
+# Hugging Face rejects raw PNG blobs in git packs; this workflow rewrites history in the
+# runner with `git lfs migrate import` for colab/results/plots/*.png before pushing to the
+# Space only (GitHub is unchanged). See: https://huggingface.co/docs/hub/xet
+#
+# Secrets: HF_TOKEN (write access to the Space). Optional vars: HF_USERNAME, HF_SPACE
+# (defaults kaori02 / arm-gym).
+#
+# Local one-shot: scripts/sync_hf_space.sh
+
+name: Sync GitHub to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Rewrite PNGs to Git LFS for Hub push
+        run: |
+          git lfs install
+          git lfs migrate import --include="colab/results/plots/*.png" --include-ref=refs/heads/main
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USER: ${{ vars.HF_USERNAME }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          U="${HF_USER:-kaori02}"
+          S="${HF_SPACE:-arm-gym}"
+          git push --force "https://${U}:${HF_TOKEN}@huggingface.co/spaces/${U}/${S}" HEAD:main

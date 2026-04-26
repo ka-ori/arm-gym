@@ -14,26 +14,24 @@ from arm_gym.compile_baseline import ToolchainInfo, compile_to_asm
 from arm_gym.kernels import KernelVariant, generate_all, split_train_eval
 
 
-# Prompt shape from SuperCoder Appendix A.3 (arXiv:2505.11480), ISA swapped
-# to AArch64. Verbatim constraints: no extra text, no comments in asm, tags.
-# PDF: meta-hackathon-llm-wiki/papers/supercoder.pdf
+# C + baseline stay in the row for the verifier; user message ends with an
+# ``<assembly>`` prefill so the assistant continues inside the tag (Qwen chat).
 SYSTEM_PROMPT = (
-    "You are an expert AArch64 (aarch64-linux-gnu-gcc) assembly writer. "
-    "Obey the user block exactly. Output only what is asked in the required tags."
+    "You write only AArch64 (aarch64-linux-gnu) assembly inside the user’s "
+    "<assembly> block. No prose, no C, no other languages—assembly between "
+    "the opening line the user started and a closing </assembly> tag."
 )
 
 
 def user_prompt(c_source: str, baseline_asm: str) -> str:
-    # Order and wording follow SuperCoder A.3 (x86-64 -> AArch64 for arm-gym).
     return (
-        "Given the following C code and assembly code, your task is to generate "
-        "highly optimized AArch64 assembly code.\n\n"
-        f"C Code:\n{c_source}\n\n"
-        f"Assembly Code:\n{baseline_asm}\n\n"
-        "Only output the optimized assembly code. Do not include any other text. "
-        "Do not write any comments in the assembly code. "
-        "Wrap the assembly code in <assembly></assembly> tags.\n\n"
-        "Optimized Assembly Code:\n"
+        "Generate ONLY AArch64 assembly.\n\n"
+        "Wrap your continuation in <assembly></assembly> tags "
+        "(the opening tag is already below—finish the block and close with "
+        "</assembly>).\n\n"
+        f"C code:\n{c_source}\n\n"
+        f"Baseline assembly (gcc -O3):\n{baseline_asm}\n\n"
+        "<assembly>\n"
     )
 
 
@@ -60,7 +58,8 @@ def render_prompt(tokenizer, c_source: str, baseline_asm: str) -> str:
             prompt = f"{SYSTEM_PROMPT}\n\n{messages[1]['content']}\n"
     else:
         prompt = f"{SYSTEM_PROMPT}\n\n{messages[1]['content']}\n"
-    return prompt.rstrip()
+    # Do not rstrip: user content must end with "<assembly>\n" for generation prefill.
+    return prompt if prompt.endswith("\n") else prompt + "\n"
 
 
 @dataclass

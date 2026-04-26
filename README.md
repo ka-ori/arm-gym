@@ -17,6 +17,7 @@ short_description: GRPO env for AArch64 superoptimization
 
 <p align="center">
   <a href="https://huggingface.co/spaces/dot-mkv/arm-gym">HF Space</a> &middot;
+  <a href="./blog.md">Blog</a> &middot;
   <a href="#quick-start">Quick Start</a> &middot;
   <a href="#results">Results</a> &middot;
   <a href="#why-it-matters">Why It Matters</a>

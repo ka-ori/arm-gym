@@ -36,11 +36,14 @@ def test_format_reward_prefers_closed_assembly_blocks() -> None:
         ]
     )
 
-    assert rewards == [0.2, 0.0]
+    assert rewards == [0.2, -1.0]
 
 
 def test_user_prompt_includes_baseline_fallback() -> None:
     prompt = user_prompt("int f(void){return 0;}", "f:\n\tret\n")
 
-    assert "copy the baseline assembly exactly" in prompt
-    assert "...AArch64 assembly only..." not in prompt
+    assert "Generate ONLY AArch64" in prompt
+    assert "C code:" in prompt
+    assert "Baseline assembly" in prompt
+    assert prompt.rstrip().endswith("<assembly>")
+    assert "ret" in prompt
