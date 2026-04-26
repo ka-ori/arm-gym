@@ -64,7 +64,8 @@ class Cfg:
     model_id: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
     hub_model_id: str = "ZDC-M01/arm-gym-mvp-50"
     steps: int = 50
-    num_generations: int = 6
+    # 4: safer on A10G 24GB at 50+ steps; 6 OOMs on same flavor
+    num_generations: int = 4
     gradient_accumulation_steps: int = 8
     per_device_train_batch_size: int = 1
     lora_rank: int = 24
@@ -78,7 +79,10 @@ class Cfg:
     max_eval: int = 16
     warmup_steps: int = 10
     out_dir: str = "runs/v6-mvp"
-    save_steps: int = 25
+    # mvp: one checkpoint at step 50 (end of 50-step run) + final lora-adapter
+    save_steps: int = 50
+    # long profile overrides to 4 so steps 50/100/150/200 are all retained
+    save_total_limit: int = 1
 
 def _default_profile() -> str:
     if p := os.environ.get("ARMGYM_PROFILE"):
@@ -97,11 +101,19 @@ def _apply_profile(cfg: Cfg) -> Cfg:
         cfg.steps = 200
         cfg.out_dir = "runs/v6-200"
         cfg.save_steps = 50
+        cfg.save_total_limit = 4
     return cfg
 
 cfg = _apply_profile(Cfg())
-log.info("Profile: %s  hub=%s  out=%s  steps=%d",
-         _default_profile(), cfg.hub_model_id, cfg.out_dir, cfg.steps)
+log.info(
+    "Profile: %s  hub=%s  out=%s  steps=%d  save_every=%d  keep_ckpt=%d",
+    _default_profile(),
+    cfg.hub_model_id,
+    cfg.out_dir,
+    cfg.steps,
+    cfg.save_steps,
+    cfg.save_total_limit,
+)
 log.info("Config: model=%s steps=%d G=%d temp=%.1f",
          cfg.model_id, cfg.steps, cfg.num_generations, cfg.temperature)
 
@@ -649,7 +661,7 @@ def build_grpo_config(cfg):
         remove_unused_columns=False,
         logging_steps=1,
         save_steps=cfg.save_steps,
-        save_total_limit=1,
+        save_total_limit=cfg.save_total_limit,
         report_to="none",
     )
     while True:
@@ -661,6 +673,28 @@ def build_grpo_config(cfg):
                 raise
             log.warning("Dropping unsupported GRPOConfig param: %r", m.group(1))
             p.pop(m.group(1), None)
+
+
+def _write_export_manifest(out: Path, cfg: Cfg) -> None:
+    """Record config + produced paths for HF upload and post-hoc analysis."""
+    checkpoints = sorted(
+        p.name for p in out.iterdir() if p.is_dir() and p.name.startswith("checkpoint-")
+    )
+    manifest: dict = {
+        "profile": _default_profile(),
+        "export_time_epoch": int(time.time()),
+        "train_config": asdict(cfg),
+        "artifacts": {
+            "config_json": "config.json",
+            "log_csv": "log.csv",
+            "lora_adapter_dir": "lora-adapter",
+            "checkpoint_dirs": checkpoints,
+        },
+    }
+    (out / "export_manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    log.info("Wrote export manifest (%d checkpoints): %s", len(checkpoints), out / "export_manifest.json")
 
 
 # ── TRAIN ─────────────────────────────────────────────────────────────────────
@@ -729,6 +763,8 @@ finally:
         log.info("LoRA adapter saved to %s", out / "lora-adapter")
     except Exception as e:
         log.error("Failed to save LoRA adapter: %s", e)
+
+    _write_export_manifest(out, cfg)
 
     if hf_tok := os.environ.get("HF_TOKEN"):
         try:
