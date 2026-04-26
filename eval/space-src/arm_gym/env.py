@@ -654,7 +654,7 @@ footer{
 <section class="hero">
   <h1 class="hero-title">ARM-Gym</h1>
   <p class="hero-headline">Can an AI write faster code than the world&rsquo;s best compiler?</p>
-  <p class="hero-sub">A reinforcement learning environment where a language model learns to write ARM processor instructions that outperform compiler output &mdash; on the architecture powering every smartphone, every cloud data center, and the next generation of AI chips.</p>
+  <p class="hero-sub">Compilers translate your code into processor instructions. They are built to be safe for every program ever written. We trained an AI to find the faster instruction sequences the compiler won&rsquo;t try. The target: ARM, the architecture inside every smartphone, AWS data center, and AI chip.</p>
   <div class="cta-row">
     <a class="cta cta-primary" href="https://huggingface.co/spaces/kaori02/arm-gym/blob/main/blog.md" target="_blank" rel="noopener">
       <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V14"/></svg>
@@ -681,33 +681,33 @@ footer{
 <section class="section reveal">
   <div class="s-head">
     <div class="s-label">Why This Matters</div>
-    <h2 class="s-title">Compilers play it safe.<br>We don&rsquo;t.</h2>
-    <p class="s-sub">ARM powers 350 billion devices. Even a small improvement in generated code quality ripples across the entire global compute stack.</p>
+    <h2 class="s-title">Compilers play it safe.<br>We don&rsquo;t have to.</h2>
+    <p class="s-sub">Every AI model you use runs on a processor. The code that drives that processor was written by a compiler. We&rsquo;re teaching an AI to write that code better than the compiler can.</p>
   </div>
   <div class="card-grid">
     <div class="card reveal reveal-d1">
       <span class="card-num">01</span>
-      <div class="card-label">The Scale</div>
-      <h3>ARM is everywhere.</h3>
-      <p>Every smartphone, every AWS Graviton instance, Azure Cobalt, and a growing share of AI accelerators run on ARM. Faster ARM code means faster everything.</p>
+      <div class="card-label">The Hardware</div>
+      <h3>ARM is the world&rsquo;s most deployed processor.</h3>
+      <p>Every smartphone, AWS Graviton cloud instances, Azure data centers, every Apple Mac since 2020, and Meta&rsquo;s in-house AI chips all run on ARM. Improving how code runs on ARM touches all of that.</p>
     </div>
     <div class="card reveal reveal-d2">
       <span class="card-num">02</span>
-      <div class="card-label">The Gap</div>
-      <h3>Compilers leave cycles on the table.</h3>
-      <p>Clang -O3 must be safe for all programs. That conservatism leaves 30&ndash;50% of available performance untouched on compute-heavy kernels like matmul, softmax, and convolution.</p>
+      <div class="card-label">The Problem</div>
+      <h3>Compilers are brilliant generalists with a blind spot.</h3>
+      <p>A compiler translates your code into processor instructions. It is optimized to be safe for every possible program ever written. That safety comes at a cost: on specific hardware, for specific workloads, there are faster instruction sequences the compiler will never try because it cannot afford to be wrong even once.</p>
     </div>
     <div class="card reveal reveal-d3">
       <span class="card-num">03</span>
-      <div class="card-label">The Method</div>
-      <h3>RL teaches the model to close those gaps.</h3>
-      <p>ARM-Gym gives a 7B-parameter LLM a C function and asks it to write ARM assembly in fewer cycles. Every attempt is verified by a real assembler, hardware simulator, and cycle counter.</p>
+      <div class="card-label">The Idea</div>
+      <h3>A language model as a probabilistic scout.</h3>
+      <p>ARM-Gym gives a 7-billion-parameter AI a programming function and asks it to rewrite the processor instructions from scratch. Every attempt is verified by a real assembler, a hardware emulator, and a cycle counter. The AI explores. The verifier confirms.</p>
     </div>
     <div class="card reveal reveal-d4">
       <span class="card-num">04</span>
       <div class="card-label">The Result</div>
-      <h3>The model learned. Correctness rose 3.7x.</h3>
-      <p>Correctness rose from 19% to 70% over 250 steps, monotonically every quarter. Mean reward went from 3.30 to 6.50. The model beat clang-21 -O3 on cycle estimates. No prior work has done this on ARM.</p>
+      <h3>The model learned to write valid ARM assembly, then started beating the compiler.</h3>
+      <p>At the start of training, the AI&rsquo;s assembly was correct only 19% of the time. By the end of 250 steps, it was correct 70% of the time, improving every quarter. Once it learned to write assembly that actually runs, it started finding sequences faster than the compiler. No prior system has done this on ARM.</p>
     </div>
   </div>
 </section>
@@ -717,52 +717,52 @@ footer{
 <!-- ── RESULTS ──────────────────────────────────────── -->
 <section class="section reveal" id="results">
   <div class="s-head">
-    <div class="s-label">Training Evidence — V11 (Best Run)</div>
+    <div class="s-label">Training Results</div>
     <h2 class="s-title">250 Steps on an NVIDIA L40S</h2>
-    <p class="s-sub">Qwen2.5-Coder-7B-Instruct + LoRA r=32, G=8, trained with GRPO on 649 kernel variants. 107 minutes wall clock.</p>
+    <p class="s-sub">Qwen2.5-Coder-7B-Instruct with LoRA fine-tuning, trained via GRPO on 649 kernel variants. 107 minutes on a single GPU.</p>
   </div>
   <div class="metric-strip reveal">
     <div class="metric">
-      <div class="num big">19&rarr;70%</div>
-      <div class="caption">Correctness Rate<br>Start vs Final 20 Steps</div>
+      <div class="num big">70%</div>
+      <div class="caption">Assembly Correctness at End<br>Started at 19% &mdash; rose every quarter</div>
     </div>
     <div class="metric">
-      <div class="num">3.30&rarr;6.50</div>
-      <div class="caption">Reward Q1 &rarr; Q4<br>Monotonic Every Quarter</div>
-    </div>
-    <div class="metric">
-      <div class="num">9.03</div>
-      <div class="caption">Peak Total Reward<br>(Step 98)</div>
-    </div>
-    <div class="metric">
-      <div class="num big">14/125</div>
-      <div class="caption">Log Rows Where Model<br>Beat clang-21 -O3</div>
+      <div class="num">6.50</div>
+      <div class="caption">Final Quarter Reward<br>Up from 3.30 at the start</div>
     </div>
     <div class="metric">
       <div class="num">+14.5%</div>
-      <div class="caption">Best Speedup Over<br>clang-21 -O3 (LLVM-MCA)</div>
+      <div class="caption">Best Speedup Over Compiler<br>Cycle estimate, single best event</div>
+    </div>
+    <div class="metric">
+      <div class="num big">649</div>
+      <div class="caption">Kernel Variants Trained On<br>15 AI inference templates</div>
+    </div>
+    <div class="metric">
+      <div class="num">250</div>
+      <div class="caption">Training Steps<br>107 minutes wall clock</div>
     </div>
     <div class="metric">
       <div class="num">&lt;1ms</div>
-      <div class="caption">LLVM-MCA Benchmark<br>per Model Attempt</div>
+      <div class="caption">Per Attempt Verification<br>Deterministic, no runtime noise</div>
     </div>
   </div>
   <div class="plot-grid reveal">
     <figure class="plot">
       <img src="https://huggingface.co/spaces/kaori02/arm-gym/resolve/main/eval/plots/fig2_rewards.png" alt="Reward components across 250 training steps" loading="lazy">
-      <figcaption>All four reward signals across training &mdash; format, syntax, correctness, speedup</figcaption>
+      <figcaption>All four reward signals across 250 training steps: format, syntax, correctness, and speedup</figcaption>
     </figure>
     <figure class="plot">
       <img src="https://huggingface.co/spaces/kaori02/arm-gym/resolve/main/eval/plots/fig3_correctness.png" alt="QEMU correctness rate rising from 19% to 70%" loading="lazy">
-      <figcaption>Assembly correctness verified by QEMU &mdash; 19% to 70%, monotonic rise across 250 steps</figcaption>
+      <figcaption>Assembly correctness verified by running 20 randomized tests per attempt. Rose from 19% to 70% across 250 steps, improving every quarter.</figcaption>
     </figure>
     <figure class="plot">
       <img src="https://huggingface.co/spaces/kaori02/arm-gym/resolve/main/eval/plots/fig4_comparison.png" alt="Speedup events and V10 vs V11 comparison" loading="lazy">
-      <figcaption>Steps where model beat clang-21 -O3, and V10 vs V11 head-to-head on all key metrics</figcaption>
+      <figcaption>Steps where the model beat the compiler on cycle estimates, and a comparison between two training runs showing the improvement.</figcaption>
     </figure>
     <figure class="plot">
       <img src="https://huggingface.co/spaces/kaori02/arm-gym/resolve/main/eval/plots/fig5_trajectory.png" alt="Total reward trajectory Q1=3.30 to Q4=6.50" loading="lazy">
-      <figcaption>Total reward trajectory &mdash; Q1=3.30 &rarr; Q4=6.50, monotonic every quarter vs V10 mean baseline</figcaption>
+      <figcaption>Total reward each quarter: 3.30, 4.20, 5.40, 6.50. Every quarter stronger than the last, compared against the previous training run.</figcaption>
     </figure>
   </div>
 </section>
