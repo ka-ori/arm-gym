@@ -1,2 +1,0 @@
-# Hugging Face Hub rejects raw PNG git objects on Space pushes; use Git LFS.
-colab/results/plots/*.png filter=lfs diff=lfs merge=lfs -text
