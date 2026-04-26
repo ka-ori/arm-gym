@@ -21,19 +21,20 @@ RUN curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
           && apt-get install -y --no-install-recommends clang llvm llvm-tools lld)) \
   && rm -rf /var/lib/apt/lists/*
 
-# --- final stage: slim Python image with only needed binaries ---
+# --- final stage: slim Python image ---
 FROM python:3.11-slim
+
+# Full cross GCC/binutils/qemu from apt (copying only /usr/bin/gcc misses cc1 in
+# /usr/lib/gcc-cross/ and breaks baseline compile with "cannot execute cc1").
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      gcc-aarch64-linux-gnu \
+      binutils-aarch64-linux-gnu \
+      qemu-user-static \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /usr/bin/llvm-mca-21           /usr/local/bin/llvm-mca-21
 COPY --from=build /usr/bin/llvm-mca-21           /usr/local/bin/llvm-mca
-COPY --from=build /usr/bin/aarch64-linux-gnu-as  /usr/local/bin/aarch64-linux-gnu-as
-COPY --from=build /usr/bin/aarch64-linux-gnu-ld  /usr/local/bin/aarch64-linux-gnu-ld
-COPY --from=build /usr/bin/aarch64-linux-gnu-gcc /usr/local/bin/aarch64-linux-gnu-gcc
-COPY --from=build /usr/bin/qemu-aarch64-static   /usr/local/bin/qemu-aarch64-static
-
-# Copy shared libraries needed by the toolchain binaries
-COPY --from=build /usr/lib/aarch64-linux-gnu/    /usr/lib/aarch64-linux-gnu/
-COPY --from=build /usr/aarch64-linux-gnu/        /usr/aarch64-linux-gnu/
 COPY --from=build /usr/lib/llvm-21/lib/          /usr/lib/llvm-21/lib/
 
 # GCC cross-compiler internal headers (stddef.h, stdarg.h, etc.) and cc1 binary.
