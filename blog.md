@@ -200,6 +200,18 @@ The deterministic verifier (GNU assembler + QEMU + LLVM-MCA) is the scout's grou
 
 ---
 
+## Room to grow
+
+250 steps on a single GPU in 107 minutes is a proof of concept, not an optimized training run. The results are real, but they are early.
+
+With more compute, the next steps are clear. Longer training (500 to 1,000 steps) would push correctness past 70% and give the speedup signal more time to reinforce. A larger LoRA rank captures more optimization patterns. Running 16 generations per step instead of 8 gives GRPO a wider group to learn from, improving the quality of the relative signal. And silicon validation on physical Graviton hardware would convert every "MCA-model speedup" claim into a real benchmark number.
+
+The win rate (14 of 125 logged steps where the model beat the compiler) looks modest. But SuperCoder started in the same place. Their model needed hundreds more steps before correctness stabilized and the speedup gradient became consistent. ARM assembly is harder than x86 for a model with no ARM-specific pretraining. The 70% correctness at step 250 is the foundation; the speedup is what gets built on top of it.
+
+The SVE2 stage in the curriculum has never been touched. No existing model has been trained to generate ARM SME2 code. That frontier is entirely open.
+
+---
+
 ## What comes next: the neural compiler roadmap
 
 This is not just a hackathon project. The direction it points toward is substantial.

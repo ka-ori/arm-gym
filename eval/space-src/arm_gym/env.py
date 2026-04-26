@@ -811,52 +811,79 @@ flowchart LR
 
 <div class="divider"><span class="divider-dot"></span></div>
 
-<!-- ── API ──────────────────────────────────────────── -->
-<section class="section reveal" id="api">
+<!-- ── TRAINING SCRIPTS ─────────────────────────────── -->
+<section class="section reveal">
   <div class="s-head">
-    <div class="s-label">Endpoints</div>
-    <h2 class="s-title">API Reference</h2>
+    <div class="s-label">Reproduce the Training</div>
+    <h2 class="s-title">Everything is open.</h2>
+    <p class="s-sub">Both training runs are fully reproducible. The scripts, logs, and trained weights are all public.</p>
   </div>
-  <div class="api-wrap">
-  <table>
-    <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
-    <tbody>
-      <tr><td><span class="badge badge-get">GET</span></td><td><a class="ep" href="/health" target="_blank">/health</a></td><td><span class="info">Toolchain readiness check &mdash; clang, llvm-mca, QEMU</span></td></tr>
-      <tr><td><span class="badge badge-get">GET</span></td><td><a class="ep" href="/metadata" target="_blank">/metadata</a></td><td><span class="info">Environment name, version, configuration</span></td></tr>
-      <tr><td><span class="badge badge-get">GET</span></td><td><a class="ep" href="/tasks" target="_blank">/tasks</a></td><td><span class="info">All 649 kernel variants by difficulty</span></td></tr>
-      <tr><td><span class="badge badge-get">GET</span></td><td><a class="ep" href="/state" target="_blank">/state</a></td><td><span class="info">Current episode state, step count, best speedup</span></td></tr>
-      <tr><td><span class="badge badge-post">POST</span></td><td><span class="ep-dim">/reset?seed=42</span></td><td><span class="info">Start new episode &mdash; returns kernel, baseline asm, cycles</span></td></tr>
-      <tr><td><span class="badge badge-post">POST</span></td><td><span class="ep-dim">/step</span></td><td><span class="info">Submit assembly, run 3-gate verification, get reward</span></td></tr>
-      <tr><td><span class="badge badge-ws">WS</span></td><td><span class="ep-dim">/ws</span></td><td><span class="info">WebSocket JSON-RPC for training loops</span></td></tr>
-      <tr><td><span class="badge badge-get">GET</span></td><td><a class="ep" href="/docs" target="_blank">/docs</a></td><td><span class="info">Interactive Swagger UI</span></td></tr>
-    </tbody>
-  </table>
+  <div class="card-grid">
+    <div class="card reveal reveal-d1">
+      <span class="card-num">V11</span>
+      <div class="card-label">Primary Run</div>
+      <h3>Qwen2.5-Coder-7B + LoRA r=32, 250 steps</h3>
+      <p>107 minutes on a single NVIDIA L40S. 8 generations per step. 649 kernel variants. This is the run all results are based on.</p>
+      <p style="margin-top:.8rem">
+        <a href="https://huggingface.co/spaces/kaori02/arm-gym/blob/main/hf/v11_train.py" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;font-size:.85rem">Training script (v11_train.py) &rarr;</a><br>
+        <a href="https://huggingface.co/ZDC-M01/arm-gym-v11-train-250" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;font-size:.85rem">Trained LoRA adapters &rarr;</a>
+      </p>
+    </div>
+    <div class="card reveal reveal-d2">
+      <span class="card-num">V10</span>
+      <div class="card-label">Comparison Run</div>
+      <h3>Qwen2.5-Coder-7B + LoRA r=24, 200 steps</h3>
+      <p>94 minutes on a single NVIDIA L40S. 6 generations per step. Used as the baseline comparison in all plots. Shows what a slightly smaller config achieves.</p>
+      <p style="margin-top:.8rem">
+        <a href="https://huggingface.co/spaces/kaori02/arm-gym/blob/main/hf/v10_train.py" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;font-size:.85rem">Training script (v10_train.py) &rarr;</a><br>
+        <a href="https://huggingface.co/spaces/kaori02/arm-gym/resolve/main/logs/arm-gym-logs.zip" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;font-size:.85rem">Training logs, both runs (CSV) &rarr;</a>
+      </p>
+    </div>
+    <div class="card reveal reveal-d3">
+      <span class="card-num">NB</span>
+      <div class="card-label">Colab Notebook</div>
+      <h3>Key training steps with dependency notes</h3>
+      <p>The notebook was built to run on HuggingFace infrastructure. It has dependency notes for running on Colab and snippets showing each stage of the GRPO training loop.</p>
+      <p style="margin-top:.8rem">
+        <a href="https://huggingface.co/spaces/kaori02/arm-gym/blob/main/eval/arm_gym_grpo_colab.ipynb" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;font-size:.85rem">Open notebook &rarr;</a>
+      </p>
+    </div>
   </div>
 </section>
 
 <div class="divider"><span class="divider-dot"></span></div>
 
-<!-- ── QUICK START ──────────────────────────────────── -->
-<section class="section reveal">
+<!-- ── TRY IT ────────────────────────────────────────── -->
+<section class="section reveal" id="api">
   <div class="s-head">
-    <div class="s-label">Get Started</div>
-    <h2 class="s-title">Quick Start</h2>
+    <div class="s-label">Live Environment</div>
+    <h2 class="s-title">Try it now.</h2>
+    <p class="s-sub">The environment is running. Hit <a href="/docs" target="_blank" style="color:var(--gold)">interactive Swagger docs</a> to test every endpoint directly in the browser, or use curl.</p>
+  </div>
+  <div style="text-align:center;margin-bottom:2rem">
+    <a class="cta cta-primary" href="/docs" target="_blank" rel="noopener" style="display:inline-flex">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      Open Interactive API Docs
+    </a>
   </div>
   <div class="terminal">
     <div class="terminal-bar">
       <span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>
       <span class="terminal-title">bash</span>
     </div>
-<pre><span class="comment"># Get a kernel to optimize</span>
+<pre><span class="comment"># Check toolchain: gcc, llvm-mca, QEMU</span>
+<span class="cmd">curl</span> -s <span class="str">"https://kaori02-arm-gym.hf.space/health"</span>
+
+<span class="comment"># Get a kernel to optimize (C source + baseline assembly + cycle count)</span>
 <span class="cmd">curl</span> -s -X POST <span class="str">"https://kaori02-arm-gym.hf.space/reset?seed=42"</span>
 
-<span class="comment"># Submit an assembly attempt</span>
+<span class="comment"># Submit assembly, get reward (syntax + correctness + speedup)</span>
 <span class="cmd">curl</span> -s -X POST <span class="str">"https://kaori02-arm-gym.hf.space/step"</span> \\
   -H <span class="str">"content-type: application/json"</span> \\
-  -d <span class="str">'{"variant_id":"vec_add_...","assembly":".text\\nkernel:\\n  ret"}'</span>
+  -d <span class="str">'{"variant_id":"vec_add_n16_float32","assembly":".text\n.global kernel\nkernel:\n  ret"}'</span>
 
-<span class="comment"># Check toolchain status</span>
-<span class="cmd">curl</span> -s <span class="str">"https://kaori02-arm-gym.hf.space/health"</span></pre>
+<span class="comment"># All 649 kernel variants by difficulty</span>
+<span class="cmd">curl</span> -s <span class="str">"https://kaori02-arm-gym.hf.space/tasks"</span></pre>
   </div>
 </section>
 
