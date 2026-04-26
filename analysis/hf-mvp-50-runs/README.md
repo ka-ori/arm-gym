@@ -1,10 +1,11 @@
 # HuggingFace Jobs — MVP 50-step runs
 
-## Run (retry) — `transformers-pytorch-gpu` image has no `curl` by default. First job `69ed72a7d2c8bd8662bcedbd` failed at `curl: command not found`. Use the `apt-get install curl` prefix below.
+### Jobs
 
-### Latest run
+1. `69ed72a7d2c8bd8662bcedbd` — **ERROR** (image has no `curl`).  
+2. `69ed72e8d70108f37acdf4ca` — **RUNNING** (Python downloads [`hf/job_run_mvp50_github_v6.sh`](https://raw.githubusercontent.com/ka-ori/arm-gym/main/hf/job_run_mvp50_github_v6.sh) then runs `run_hf_mvp` + main `v6_train.py`).
 
-- **Job URL:** *(update after the replacement job is submitted)*  
+- **Current job URL:** https://huggingface.co/jobs/ZDC-M01/69ed72e8d70108f37acdf4ca  
 - **Profile:** `ARMGYM_PROFILE=mvp` → **50 steps**  
 - **Launcher:** `hf/job_run_mvp50_github_v6.sh` (curls `hf/run_hf_mvp.sh`, pins `v6_train.py` to **main** on GitHub for harness + G=4 + export manifest)  
 - **Model repo (full run folder upload on success):** https://huggingface.co/ZDC-M01/arm-gym-mvp-50  
