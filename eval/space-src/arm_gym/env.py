@@ -566,7 +566,7 @@ body::before{
   background:var(--surface);color:var(--dim);font-size:.8rem;font-weight:500;
 }
 .plot .placeholder svg{width:32px;height:32px;opacity:.3}
-.plot figcaption{font-size:.73rem;color:var(--muted);padding:.7rem .95rem;text-align:center;border-top:1px solid var(--border)}
+.plot figcaption{font-size:.73rem;color:var(--muted);padding:.7rem .95rem;text-align:center;border-top:1px solid var(--border);min-height:3.2rem;display:flex;align-items:center;justify-content:center}
 
 /* ── Mermaid Diagram ─────────────────────────────────── */
 .mermaid-wrap{
