@@ -560,9 +560,9 @@ body::before{
   transition:border-color .3s,box-shadow .3s;
 }
 .plot:hover{border-color:var(--border-hi);box-shadow:0 8px 30px rgba(0,0,0,.25)}
-.plot img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#fafafa}
+.plot img{width:100%;height:auto;display:block;object-fit:contain;background:var(--surface)}
 .plot .placeholder{
-  width:100%;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.5rem;
+  width:100%;padding:3rem 1rem;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.5rem;
   background:var(--surface);color:var(--dim);font-size:.8rem;font-weight:500;
 }
 .plot .placeholder svg{width:32px;height:32px;opacity:.3}
