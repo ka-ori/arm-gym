@@ -64,7 +64,8 @@ class Cfg:
     model_id: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
     hub_model_id: str = "ZDC-M01/arm-gym-mvp-50"
     steps: int = 50
-    num_generations: int = 6
+    # 4: safer on A10G 24GB at 50+ steps; 6 OOMs on same flavor
+    num_generations: int = 4
     gradient_accumulation_steps: int = 8
     per_device_train_batch_size: int = 1
     lora_rank: int = 24
