@@ -36,6 +36,12 @@ COPY --from=build /usr/lib/aarch64-linux-gnu/    /usr/lib/aarch64-linux-gnu/
 COPY --from=build /usr/aarch64-linux-gnu/        /usr/aarch64-linux-gnu/
 COPY --from=build /usr/lib/llvm-21/lib/          /usr/lib/llvm-21/lib/
 
+# GCC cross-compiler internal headers (stddef.h, stdarg.h, etc.) and cc1 binary.
+# Without these, gcc -S fails on any kernel that uses #include <stddef.h>.
+# The probe test in detect_toolchain passes (no headers) but real kernels fail.
+COPY --from=build /usr/lib/gcc-cross/            /usr/lib/gcc-cross/
+COPY --from=build /usr/lib/gcc/                  /usr/lib/gcc/
+
 RUN useradd -m -u 1000 armgym
 WORKDIR /app
 

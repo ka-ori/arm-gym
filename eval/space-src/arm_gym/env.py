@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
@@ -980,14 +980,19 @@ def state_endpoint() -> dict[str, Any]:
 
 @app.post("/reset")
 def reset_endpoint(seed: int | None = None, episode_id: str | None = None) -> dict[str, Any]:
-    obs = _env().reset(seed=seed, episode_id=episode_id)
-    result: dict[str, Any] = obs.model_dump()
-    return result
+    try:
+        obs = _env().reset(seed=seed, episode_id=episode_id)
+        return obs.model_dump()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.post("/step")
 def step_endpoint(action: CompilerAction) -> CompilerObservation:
-    return _env().step(action)
+    try:
+        return _env().step(action)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.websocket("/ws")
