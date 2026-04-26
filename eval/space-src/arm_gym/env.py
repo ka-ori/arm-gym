@@ -652,7 +652,6 @@ footer{
 
 <!-- ── HERO ─────────────────────────────────────────── -->
 <section class="hero">
-  <span class="hero-badge">OpenEnv Hackathon India 2026 &mdash; Finals</span>
   <h1 class="hero-title">ARM-Gym</h1>
   <p class="hero-headline">Can an AI write faster code than the world&rsquo;s best compiler?</p>
   <p class="hero-sub">A reinforcement learning environment where a language model learns to write ARM processor instructions that outperform compiler output &mdash; on the architecture powering every smartphone, every cloud data center, and the next generation of AI chips.</p>
