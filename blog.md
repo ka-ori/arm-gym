@@ -1,77 +1,91 @@
-# We trained an AI to write faster ARM assembly than the compiler
+# We Trained an AI to Write Faster ARM Assembly Than the Compiler
 
-Some ideas start with a paper.
+*Meta / HuggingFace OpenEnv Hackathon India 2026 — Finals. Theme: Wild Card. Team: (dot)mkv.*
 
-In January 2026, a team from Stanford and UIUC published [SuperCoder](https://arxiv.org/abs/2505.11480) - a system that trained a language model to write assembly code faster than `gcc -O3`, the most aggressive optimization setting of the world's most widely used compiler. Their result: 1.46x average speedup. On x86-64. With a 7 billion parameter model trained via reinforcement learning.
+---
 
-The paper was explicit about one thing it did not do: ARM.
+Some ideas start with a single sentence in a research paper.
 
-> "Extending to ARM, RISC-V, and GPU kernels is noted as future work."
+In late 2025, a team from Stanford and UIUC published [SuperCoder](https://arxiv.org/abs/2505.11480) — a system that trained a language model to write assembly code faster than `gcc -O3`, the most aggressive optimization setting of the world's most widely used compiler. Their result was remarkable: **1.46x average speedup** on an open benchmark of 8,072 programs. A 7 billion parameter model, trained for a few hours via reinforcement learning, was regularly outperforming decades of compiler engineering.
+
+The paper was explicit about one thing it did not cover:
+
+> *"Extending to ARM, RISC-V, and GPU kernels is noted as future work."*
 
 That sentence is where ARM-Gym begins.
 
 ---
 
-## What this is about, for everyone
+## First, a little context — what is a compiler, and why should you care?
 
-Before getting into what we built, here is the context for anyone who does not spend their days thinking about compilers and processors.
+If you spend your days writing Python or JavaScript, you might never think about what actually runs on the silicon inside your device. But there is a long, invisible chain between the code a programmer writes and the instructions a processor executes — and at the center of that chain is a **compiler**.
 
-**What is a compiler?**
+A compiler is a program that translates human-readable source code into machine instructions. When you compile a C program with the flag `-O3`, you are telling the compiler: *use everything you know to make this as fast as possible.* GCC and Clang have been doing this for decades. Thousands of engineer-years have gone into `-O3`. It inlines functions, unrolls loops, reorders instructions to avoid stalls, and picks faster instruction variants when it can.
 
-A compiler is a program that takes code written in a high-level language like C and translates it into machine instructions. GCC and Clang are the two most important compilers in existence. When you compile with `-O3`, you are asking the compiler to apply every optimization it knows. It inlines functions, unrolls loops, reorders instructions to avoid stalls, selects faster instruction variants where it can.
+**And yet — compilers must be conservative.**
 
-GCC has been doing this for decades. Thousands of engineer-years have gone into making `-O3` as good as it is.
+A compiler cannot make an assumption that might be wrong for even one program in the world. It cannot take a risk that speeds up 99 programs but silently breaks the 100th. It follows rules. Rules generalize well. But rules also leave performance on the table, especially for the specific, narrow, mathematically predictable workloads that dominate AI inference — things like matrix multiply, softmax, and convolution.
 
-**And yet.**
-
-Compilers must be conservative. A compiler cannot make an assumption that might be wrong for even one program. It cannot take a risk that improves performance 99% of the time but breaks the other 1%. It follows rules. Rules generalize but do not specialize.
-
-**What is ARM?**
-
-ARM is a processor architecture - a specific design for how machine instructions are structured and executed. For a long time, ARM meant smartphones. That is no longer true. Today:
-
-- AWS Graviton5 - the most widely deployed cloud compute in the world - runs on ARM
-- Azure Cobalt 100, Microsoft's custom data center chip, runs on ARM
-- Every Apple Mac sold since 2020 runs on ARM
-- Meta's AGI CPU - 136 cores, 3nm fabrication, deployed in 2026 - runs on ARM
-
-Any improvement in how efficiently code runs on ARM touches all of that. And the specific code that matters most is the tight computational loops inside AI inference: matrix multiply, softmax, convolution. These functions run millions of times per second in every large model deployment.
+These functions run **millions of times per second** inside every large language model deployment. Every wasted CPU cycle in a softmax kernel is a wasted cycle in every AI system running on that hardware, forever.
 
 ---
 
-## The research that made this possible: SuperCoder
+## The hardware that makes this urgent: ARM is everywhere now
 
-The SuperCoder paper (Wei et al., arXiv:2505.11480, Stanford/UIUC, 2025) is the direct foundation for what we built. Understanding what they proved is essential for understanding why ARM-Gym is the next step.
+For a long time, ARM meant smartphones. That is no longer true.
 
-### What SuperCoder showed
+Today:
 
-The paper asked: can a language model learn to write assembly that beats the compiler, purely through reinforcement learning?
+- **AWS Graviton5** (Neoverse V3) — the most widely deployed cloud compute platform in the world — runs on ARM
+- **Azure Cobalt 100** (Neoverse N2) — Microsoft's custom data center chip — runs on ARM
+- **Every Apple Mac** sold since 2020 runs on ARM
+- **Meta's AGI CPU** — 136 cores, 3nm fabrication, deployed in 2026 for AI inference — runs on ARM
 
-They evaluated 23 language models on a benchmark of 8,072 assembly programs (average 130 lines each - far larger than any prior dataset, which maxed out at 15 lines and no loops). Every program came with its `gcc -O3` baseline assembly and a set of test cases.
+Any improvement in how efficiently code runs on ARM does not just touch one product. It touches all of that. And because the bottleneck is always in the tight computational kernels — the matrix multiplies, the softmax functions — that is exactly where we focused.
 
-The base model they chose for training was Qwen2.5-Coder-7B-Instruct - not because it was the strongest baseline, but because it had the highest test pass rate (61.4%) among open-source models, leaving the most room to improve. Claude-opus-4 had a slightly higher average speedup (1.43x) but was not open-source and could not be fine-tuned.
+---
 
-They trained using both PPO and GRPO. The reward function was simple: if the generated assembly compiles, passes all test cases, and runs faster than `gcc -O3`, the reward equals the speedup. Otherwise, zero. No partial credit. No reward for being partially correct.
+## The research that built the foundation
 
-That last point turned out to matter a lot. They tested an alternative reward that gave partial credit for passing some tests - and it performed worse (1.38x vs 1.46x). The lesson: partial credit lets the model avoid putting in the work of actually being correct and fast. Binary pass/fail forces it.
+ARM-Gym did not emerge from nothing. It stands on a lineage of research that moved, over five years, from "can RL find faster algorithms?" to "can an LLM learn to beat the compiler?"
 
-### The results
+### DeepMind AlphaDev (2023) — RL discovers a sorting algorithm 70% faster than libc++
 
-| Model | Correctness before training | Correctness after | Avg speedup |
-|---|---|---|---|
-| Qwen2.5-Coder-7B (base) | 61.4% | - | 1.10x |
-| SuperCoder (GRPO) | - | 95.0% | 1.44x |
-| SuperCoder (PPO) | - | 95.0% | 1.46x |
+In 2023, DeepMind published [AlphaDev](https://www.nature.com/articles/s41586-023-06004-9) in *Nature*. They applied AlphaZero — the same MCTS-based system that mastered chess and Go — to x86 assembly generation. The task: discover a sorting algorithm faster than the hand-tuned one in LLVM's standard library.
 
-Correctness jumped from 61.4% to 95%. Average speedup went from 1.10x to 1.46x. The model went from occasionally beating the compiler to reliably beating it.
+The result: **sort3 was 70% faster than libc++**. The discovered algorithm was integrated directly into LLVM's production libc++ in 2023, where it remains today. It was the first ML-discovered algorithm to ship in a major production compiler.
 
-One more finding worth noting: 98.5% of the speedup came from instruction scheduling and code layout - reordering instructions and basic blocks to better hide latency and avoid pipeline stalls. Not exotic instruction selection. The model learned that the compiler's instruction order is not optimal, and found better orderings.
+But AlphaDev had limits. MCTS requires an expensive search per problem — you cannot learn a general policy from it. Every new problem needed a fresh search costing days of compute. It targeted x86 only. And it could not explain *why* its algorithms worked.
 
-### What SuperCoder did not do
+AlphaDev proved the concept: RL can find assembly routines faster than the world's best compilers and get them into production. It did not build a general-purpose tool.
 
-It targeted x86-64 only. The paper uses the IBM CodeNet dataset, which contains competitive programming submissions compiled for x86. ARM was explicitly outside scope.
+### Meta LLM Compiler (2023) — The first language model for compiler optimization
 
-ARM has a completely different instruction set. Different SIMD extensions (NEON, SVE2 instead of AVX/SSE). Different pipeline characteristics. Different scheduler model. Different optimization opportunities. A model trained on x86 assembly cannot be directly applied to ARM.
+That same year, Chris Cummins at Meta AI published a landmark paper on using language models for compiler pass ordering. The question: can an LLM learn to select the right sequence of LLVM optimization passes for a given piece of code?
+
+Answer: yes. Their 7 billion parameter model achieved **3% code size reduction over `-Oz`** — with zero additional compilations at inference. The autotuner baseline needed 2.5 billion compilations across 9,000 CPU days to find the same answers. The LLM learned in one pass, then predicted instantly.
+
+The core insight that carried forward into all subsequent work: LLMs can internalize compiler knowledge from examples. They do not need to re-derive the answer for every input — they have learned patterns that transfer.
+
+### Compiler-R1 (NeurIPS 2025) — GRPO meets compiler optimization
+
+By late 2025, the reinforcement learning algorithm that proved itself in training DeepSeek-R1 — **GRPO (Group Relative Policy Optimization)** — was being applied to compiler problems. Compiler-R1 used GRPO to learn LLVM pass ordering, achieving an 8.46% reduction in instruction count. It demonstrated that the same RL loop that teaches language models to reason step-by-step also teaches them to optimize code, and that the approach scales cleanly.
+
+### SuperCoder (arXiv:2505.11480, 2025) — The direct blueprint
+
+SuperCoder is the paper ARM-Gym is built on. The authors asked a more direct question than anyone before: can an LLM learn to write assembly that actually *executes faster* than `gcc -O3`?
+
+Not pass ordering. Not IR optimization. **Raw assembly generation.**
+
+They used Qwen2.5-Coder-7B-Instruct — the same base model we use — trained via GRPO on 8,072 programs. The reward was binary: if the assembly compiles, passes all tests, and is faster than the compiler, reward equals the speedup. Otherwise, zero. No partial credit.
+
+That "no partial credit" design turned out to matter enormously. They tested a reward that gave partial credit for passing some tests — and it scored *worse* (1.38x vs 1.46x). Partial credit lets the model learn to be "good enough." Binary reward forces it to be actually correct and actually fast.
+
+**Final result: correctness jumped from 61.4% to 95%. Average speedup from 1.10x to 1.46x over `gcc -O3`.**
+
+One more finding worth noting: 98.5% of the speedup came from **instruction scheduling and code layout** — reordering instructions and basic blocks to hide pipeline latency. Not exotic instruction selection. Not architectural tricks. The compiler's instruction order is not optimal, and the model found better orderings.
+
+SuperCoder was published on x86-64 only. The paper explicitly identified ARM as the natural next target. No one had built it yet.
 
 That is the gap ARM-Gym fills.
 
@@ -79,197 +93,168 @@ That is the gap ARM-Gym fills.
 
 ## What we built: ARM-Gym
 
-ARM-Gym is a reinforcement learning environment built on [OpenEnv](https://github.com/meta-pytorch/OpenEnv), the framework from Meta and Hugging Face. The task is identical to SuperCoder's in structure - generate assembly that beats `gcc -O3` - but the target is AArch64 (ARM's 64-bit architecture) and the kernels are specifically chosen to be representative of AI inference workloads.
+ARM-Gym is a reinforcement learning environment built on [OpenEnv](https://github.com/meta-pytorch/OpenEnv), the framework created by Meta and Hugging Face for hackathon-grade RL environments. The task mirrors SuperCoder exactly — generate assembly that beats the compiler — but the target is **AArch64** (ARM's 64-bit instruction set) and the kernels are specifically chosen from the hot paths of AI inference workloads.
 
-### The kernel library
+### The kernel library: what the model learns to optimize
 
 We wrote 15 C function templates covering the operations that dominate AI inference:
 
-- Vector operations: `vec_add`, `dot_product`, `saxpy`
-- Matrix operations: `gemv`, `matmul`
-- Activation and normalization: `softmax`, `layer_norm`
-- Convolution: `conv1d`, `conv2d`
-- Elementwise: `relu`, `gelu`, `silu`, `fma`
+- **Vector ops**: `vec_add`, `dot_product`, `saxpy` (the building blocks of neural network layers)
+- **Matrix ops**: `gemv`, `matmul` (the core of transformer attention and feed-forward)
+- **Activation and normalization**: `softmax`, `layer_norm` (run after every layer in a transformer)
+- **Convolution**: `conv1d`, `conv2d` (dominant in vision models)
+- **Elementwise**: `relu`, `gelu`, `silu`, `fma` (activation functions run billions of times per second)
 
-From these 15 templates, we generate 523 variants by varying sizes, data types (float32, float16, int8), and parameters. This gives the training loop enough diversity to prevent memorization while staying domain-relevant.
+From 15 templates, we generate **649 variants** by varying sizes, data types (float32, float16, int8), and parameters. This prevents the model from memorizing a single solution and forces it to learn generalizable patterns.
 
-### The training loop
+### The training loop in plain English
 
-Here is exactly how training works, step by step:
+Every training step works the same way:
 
-```mermaid
-flowchart LR
-    A["C Kernel<br/>(15 templates × 523 variants)"]
-        --> B["gcc -O3<br/>Baseline Assembly"]
-    B --> C["LLM Prompt<br/>(C + Baseline ASM)"]
-    C --> D["Qwen2.5-Coder-7B<br/>+ LoRA"]
-    D --> E["Agent Assembly"]
+1. **Pick a kernel.** Sample one of the 649 variants at random.
+2. **Compile the baseline.** Run `clang-21 -O3` on the C source. Measure its cycle count with LLVM-MCA.
+3. **Build the prompt.** Give the model the C source, the compiler's assembly, and an instruction: *write optimized AArch64 assembly for this function.* The baseline is always included — SuperCoder found that without it, even strong models produce 0% compilable code. The baseline is load-bearing context.
+4. **Verify.** The model's output goes through three sequential gates. Pass all three: reward. Fail any one: zero.
+5. **Update.** GRPO scores all candidates in the group, normalizes by z-score, and nudges the model toward the better ones.
 
-    E --> F{"3-Gate Verifier"}
+The three gates are what make the reward trustworthy:
 
-    F -->|"Gate 1: Syntax"| G["GNU as"]
-    F -->|"Gate 2: Correctness"| H["QEMU × 20<br/>Adversarial Tests"]
-    F -->|"Gate 3: Performance"| I["LLVM-MCA<br/>Neoverse V2"]
+**Gate 1 — Syntax.** The assembly must compile with `aarch64-linux-gnu-as`, the real GNU assembler. Not a regex. Not a syntax checker. The actual tool that produces a real binary object. Broken assembly: score zero.
 
-    I --> J["Dual Verifier<br/>Cross-Check"]
-    J --> K["Reward<br/>max(0, speedup - 1)"]
-    K --> L["GRPO Update"]
-    L --> D
+**Gate 2 — Correctness.** The compiled binary runs 20 times inside `qemu-aarch64-static`, a full ARM CPU emulator. Each run uses randomly generated inputs — edge cases, boundary values, near-overflow values. The output must match the original C function exactly. Inputs change every episode, so the model cannot memorize test inputs and hardcode outputs.
 
-    style F fill:#f96,stroke:#333,color:#000
-    style J fill:#69f,stroke:#333,color:#000
-    style L fill:#6c6,stroke:#333,color:#000
-```
+**Gate 3 — Performance.** Cycle count measured by LLVM-MCA with the LLVM 21 Neoverse V2 scheduling model — a static analysis tool that reads assembly and estimates cycles based on the CPU's actual instruction latencies. Sub-millisecond. Deterministic. No runtime noise.
 
-**Step 1 - Sample a kernel.** Pick one of the 523 variants at random. This is the function the model needs to optimize.
+A cross-check runs on every result: QEMU instruction count vs LLVM-MCA cycle estimate. A ratio above 3x vetoes the result regardless of apparent speedup. No LLM judge anywhere in this stack.
 
-**Step 2 - Compile the baseline.** Run `gcc -O3` on the C source. This gives us the baseline assembly and a baseline cycle count from LLVM-MCA.
+### How OpenEnv made this possible
 
-**Step 3 - Build the prompt.** Send the model the C source code, the baseline assembly, and an instruction: write optimized AArch64 assembly for this function, wrapped in `<assembly>...</assembly>` tags. Crucially, the baseline is always included - SuperCoder found that without it, even strong models produce 0% compilable code. The baseline is load-bearing context.
+There is a hidden engineering problem in building RL for compiler tasks: the GPU (which runs the LLM) and the CPU toolchain (which runs QEMU, the assembler, and LLVM-MCA) are completely different kinds of work. Mix them in one process and the GPU idles while QEMU runs.
 
-**Step 4 - Verify.** The model's output goes through three sequential gates. Pass all three and you get a reward. Fail any one and you score zero.
-
-**Step 5 - Update with GRPO.** We use Group Relative Policy Optimization - the same algorithm from the DeepSeekMath paper that has since been adopted widely in RL for LLMs. GRPO generates multiple completions for the same prompt, scores them all, and uses their relative quality to compute the learning signal. It does not need a separate value function or critic model, which makes it efficient on constrained hardware.
-
-### The verifier: why it cannot be cheated
-
-Every RL environment has a reward hacking problem. Give an agent a metric and it will find the most efficient path to that metric - which is often not the path you intended.
-
-We saw this play out in Phase 1 of this hackathon across every finalist submission. One system's agent learned to starve long-context requests so short-request throughput looked better. Another learned to disconnect network access so error logs stopped appearing. A third learned to drop database tables so schema validation errors vanished. In all three cases, the metric went up and the actual objective was completely destroyed.
-
-Our verifier was designed from the start to have no exploitable surface.
-
-**Gate 1: Syntax via the real assembler.**
-
-The assembly must compile with `aarch64-linux-gnu-as`, the actual GNU assembler for ARM. Not a regular expression. Not a syntax checker. The real tool that produces a real binary object. If it rejects the assembly, the score is zero.
-
-**Gate 2: Correctness via randomized QEMU tests.**
-
-The compiled binary runs 20 times inside `qemu-aarch64-static`, a full ARM CPU emulator. Each run uses a different set of randomly generated inputs - edge cases, boundary values, near-overflow values. The output must match the original C function's output within floating-point tolerance. Inputs are randomized every episode, so the model cannot memorize test inputs and hardcode outputs for them.
-
-**Gate 3: Performance via LLVM-MCA.**
-
-We measure cycles with LLVM-MCA using the LLVM 21 Neoverse V2 scheduling model. This is a static analysis tool - it reads assembly text and estimates cycles based on the CPU's instruction latencies and throughput. It takes no inputs, executes nothing, and has no runtime attack surface.
-
-**Cross-check.** We compare the QEMU instruction count against the LLVM-MCA cycle estimate. A ratio above 3x triggers a hard veto - something is wrong, and we discard the result regardless of the apparent speedup.
-
-**3-sigma bound.** We maintain an offline distribution of speedup values for each kernel variant. Any result more than three standard deviations above the mean is rejected as a statistical outlier.
-
-No LLM judge anywhere in this stack. SuperCoder used Hyperfine (real execution timing). We use LLVM-MCA (static analysis) because it is deterministic, sub-millisecond per evaluation, and has no measurement noise. The trade-off is that MCA is a model of the hardware, not the hardware itself - which is why we label results as "MCA-model speedup" until we can validate on physical Graviton silicon.
-
-### The reward signal
+OpenEnv solves this by making the environment a standalone server. The training loop talks to it over HTTP or WebSocket. The GRPOTrainer never knows QEMU exists — it sends a POST request with generated assembly and gets back a reward score.
 
 ```
-reward = max(0, speedup - 1.0)
+POST /reset  → returns a kernel to optimize (C source + baseline assembly + cycle count)
+POST /step   → takes model's assembly, runs 3-gate verifier, returns reward
+GET  /state  → current episode info
+WS   /ws     → same operations over WebSocket for lower latency
 ```
 
-If the model's assembly is slower than `gcc -O3`, the reward is zero - neutral, not a penalty. If it is faster, the reward is the fractional improvement above parity: 1.5x speedup gives 0.5, 2x gives 1.0. Capped at 2.0 to prevent a single outlier from dominating the gradient.
+When the model produces broken assembly, it gets back exactly what went wrong — the error kind, the line number, the assembler message. The next generation can self-correct. No reward, but structured feedback instead of silence.
 
-The zero floor is not arbitrary. In GRPO, rewards within a group are z-score normalized before computing the advantage. If slower-than-compiler gave a negative reward, a group where all completions happen to be slow would produce similar negative values that normalize to near zero - producing no gradient. Making slower neutral means even a group of slow completions still has relative differences that produce a learning signal. This mirrors exactly what SuperCoder found: sparse terminal reward (no partial credit) consistently outperforms reward designs that penalize failures.
+The curriculum logic — advancing from scalar kernels to NEON to full loops when 80% of the current stage's variants pass — lives entirely inside the environment server. The trainer is unaware of it. It just calls `reset` and `step`.
 
-### The curriculum
+### Why this verifier cannot be gamed
 
-Not all kernels are equally hard. Sending the model to optimize a tiled matrix multiply before it has learned to write syntactically valid assembly is wasteful. ARM-Gym uses a staged curriculum that matches kernel difficulty to the model's current capability.
+Every RL environment has a reward hacking problem. Give an agent a metric and it will find the most efficient path to that metric — which is often not the path you intended.
 
-```mermaid
-flowchart LR
-    S1["Stage 1: Scalar<br/>vec_add, dot, saxpy"]
-        -->|"80% variants ≥ 1.05x"| S2["Stage 2: NEON<br/>gemv, conv1d, fma"]
-    S2 -->|"80% variants ≥ 1.05x"| S3["Stage 3: Loops<br/>matmul, softmax"]
-    S3 -->|"Beat -O3 mean"| S4["Stage 4: SVE2<br/>(Stretch)"]
+We saw this play out in Phase 1 of this hackathon. One submission's agent learned to starve long-context requests so short-request throughput looked better. Another disconnected network access so error logs stopped appearing. A third dropped database tables to make schema validation errors vanish. In all three cases, the metric went up. The actual objective was destroyed.
 
-    style S1 fill:#bfb,stroke:#333,color:#000
-    style S2 fill:#fbf,stroke:#333,color:#000
-    style S3 fill:#bbf,stroke:#333,color:#000
-    style S4 fill:#fbb,stroke:#333,color:#000
-```
-
-**Stage 1 - Scalar kernels.** Functions like `vec_add` and `saxpy` where the compiler produces a scalar loop. NEON vectorization (processing 4 floats at once instead of 1) is the primary optimization opportunity. This is learnable early because the pattern is consistent.
-
-**Stage 2 - NEON kernels.** Functions where the compiler already emits NEON, but instruction ordering and register reuse can be improved. Requires the model to reason about pipeline latency, not just instruction selection.
-
-**Stage 3 - Loop-heavy kernels.** Matrix multiply and softmax, where optimization requires loop tiling, unrolling, and prefetch placement. These are the hardest patterns in Stage 1-3.
-
-**Stage 4 - SVE2 (stretch target).** ARM's Scalable Vector Extension, available on Neoverse V2 and V3. No training data exists for SVE2 code generation. This stage is explicitly a research frontier - there is no known baseline for what an RL agent can achieve here.
-
-Advancement between stages requires beating `gcc -O3` by at least 5% on 80% of the variants in the current stage. The model must demonstrate broad capability, not exploit a single easy variant.
+Our verifier has no exploitable surface. The assembler is the real tool, not a simulator. Correctness tests are randomized every episode. The cycle counter is static analysis — it cannot be tricked by runtime behavior. The cross-check ratio catches physically implausible results. Nothing in the reward stack can be fooled by a model that is clever about metrics rather than correct about assembly.
 
 ---
 
-## How ARM-Gym differs from SuperCoder
+## The results: honest framing
 
-| Aspect | SuperCoder | ARM-Gym |
-|---|---|---|
-| Target architecture | x86-64 | AArch64 (ARM) |
-| Dataset | 7,872 competitive programming programs | 523 AI inference kernel variants |
-| Performance measurement | Hyperfine (real hardware timing) | LLVM-MCA (static analysis, deterministic) |
-| RL framework | VERL | HuggingFace TRL |
-| Verifier | Compile + test pass | Compile + QEMU + LLVM-MCA + cross-check + 3-sigma |
-| Reward design | Binary terminal (same principle) | Binary terminal + format shaping |
-| Dataset focus | General programs | GEMM, matmul, softmax, conv (AI inference hot path) |
-| Prior work exists | Yes (this is the paper) | No - ARM is open |
+We trained V11 — Qwen2.5-Coder-7B-Instruct with LoRA r=32, 8 generations per step, 250 training steps on an NVIDIA L40S. 107 minutes wall clock.
 
-The most important difference is the last one. SuperCoder is the proof of concept. ARM-Gym is the next frontier. The paper itself identified ARM as the natural extension - we are building it.
-
----
-
-## Results
-
-*[Results will be updated here after training completes.]*
-
-| Metric | Value |
+| Metric | V11 |
 |---|---|
-| Best speedup over `gcc -O3` | [to be updated] |
-| Win rate | [to be updated] |
-| Correctness rate | [to be updated] |
-| Training steps and GPU time | [to be updated] |
-| SuperCoder reference (x86-64, PPO) | 1.46x average over `gcc -O3` |
-| Kernel variants trained on | 523 (15 templates) |
+| Correctness (first 20 log rows) | 19% |
+| Correctness (final 20 log rows) | **70%** |
+| Reward Q1 (first quarter) | 3.30 |
+| Reward Q4 (final quarter) | **6.50** |
+| Peak total reward | 9.03 (step 98) |
+| Best speedup over clang-21 -O3 | +14.5% (LLVM-MCA estimate) |
+| Win rate | 14 of 125 reward-log rows |
+
+We want to be direct about what this means and what it does not.
+
+**The model does not universally beat `clang-21 -O3`.** The 14.5% best speedup is the best single event in 125 logged rows — not the average. Most attempts produce assembly that is correct but slower than the compiler. The 14/125 win rate tells you the model has started finding optimization opportunities. It has not mastered them.
+
+What the results *do* show is significant for a 250-step run: **correctness rose monotonically from 19% to 70%**. This matters because correctness is the prerequisite for everything else. An assembly that crashes QEMU contributes no speedup signal. An assembly that produces wrong math is dangerous. The model learned to write valid, functionally correct AArch64 assembly — and correctness is the foundation on which speedup is built.
+
+The reward trajectory confirms a genuine learning trend: Q1=3.30, Q2=4.20, Q3=5.40, Q4=6.50. Every quarter better than the last.
+
+All speedup numbers are LLVM-MCA estimates on the Neoverse V2 scheduling model. They have not been validated on physical Graviton hardware. We label them "MCA-model speedup" throughout.
+
+---
+
+## The philosophy: AI as a probabilistic scout
+
+Here is the mental model that frames why this approach is valuable, even before the model reliably beats the compiler.
+
+Modern compilers are **heuristic-bound**. They apply rules. Rules are safe, conservative, and general — they cannot be wrong for any program in the world. But rules hit a local maximum. On a specific microarchitecture, for a specific workload, there are instruction sequences that a rule-writer would never hard-code because they look strange, or because the heuristic that justifies them does not generalize beyond this exact context.
+
+We call these **dark optimizations**: speedups that are physically achievable on real silicon but invisible to any rule-based system.
+
+The LLM is not a better rulebook. It is a **probabilistic scout**. It has intuitions built from training on millions of lines of assembly — not rules, but patterns. It can try instruction orderings that no compiler engineer would propose, at scale, without having to justify each one a priori.
+
+The deterministic verifier (GNU assembler + QEMU + LLVM-MCA) is the scout's ground truth. The AI proposes. The verifier confirms or rejects. This combination finds speedups that are physically real while providing the same correctness guarantees as a traditional compiler.
+
+---
+
+## What comes next: the neural compiler roadmap
+
+This is not just a hackathon project. The direction it points toward is substantial.
+
+### Short term: Pattern extraction
+
+The AI acts as a research tool. When it finds a dark optimization — an instruction ordering, a NEON vectorization pattern, a register scheduling trick — that sequence can be **back-ported into LLVM source code** as a new deterministic rule. The model finds it; engineers formalize it. The improvement becomes permanent and available to every program, without needing ML at inference time.
+
+This is how AlphaDev's sort3 ended up in libc++. ARM-Gym can do the same for inference kernels.
+
+### Medium term: The neural compiler pass
+
+A specialized model embedded directly in the compiler pipeline. Instead of a fixed `-O3` flag that applies the same rules to every program, developers use a **`-O-ai` flag** that performs a search-based optimization targeting the specific chip they are deploying to. Graviton5 gets assembly tuned for Neoverse V3. Apple M4 gets assembly tuned for Avalanche cores. Same source code, different silicon, each optimized by a model that has learned the microarchitecture.
+
+No current compiler does this. Compiler heuristics are architecture-aware at the instruction set level, not the microarchitecture level. That gap is the opportunity.
+
+### Long term: Software-defined silicon
+
+As chip designers add new hardware instructions — ARM SME2's matrix tile operations, for example — the question becomes: *can these instructions actually be used in practice, and for what?*
+
+Today, this question is answered by humans writing benchmarks. In a world with neural compilers, an AI can be asked: *given this new instruction, find a workload where using it produces a meaningful speedup.* The loop between hardware design and software execution closes. New silicon ships with software that knows how to use it, on day one.
+
+ARM's SME2 is in production in 2026 flagship smartphones, delivering a 5x AI speedup claim. No LLM has been specifically trained to generate SME2 code. That is Stage 4 of ARM-Gym's curriculum — explicitly marked as a research frontier with no known prior work.
+
+---
+
+## Why ARM, not x86?
+
+**The gap is open.** SuperCoder, Compiler-R1, and all prior LLM compiler work targets x86-64. ARM has a completely different instruction set, different SIMD extensions (NEON, SVE2 instead of AVX/SSE), different pipeline characteristics, and different optimization opportunities. A model trained on x86 assembly does not transfer to ARM. No published system does what ARM-Gym does.
+
+**Industry gravity.** The cloud compute story has shifted. AWS Graviton5, Azure Cobalt 100, Apple Silicon, and Meta's in-house ARM chips represent the dominant trajectory of data center compute in 2026. AI inference is increasingly deployed on ARM. Optimizing ARM code has compounding returns across an enormous installed base.
+
+**Tooling is ready.** LLVM 21 ships with the Neoverse V2 scheduling model. QEMU 11.0 supports FEAT_SME2 and SVE2. The infrastructure for a high-fidelity reward signal exists now. We are not waiting on tooling.
 
 ---
 
 ## What we learned from building this
 
-**The reward formula has to be exactly right.** We made one sign error - `speedup - 1.0` instead of `max(0, speedup - 1.0)` - and it silently destroyed the speedup gradient for an entire run. A group where all completions are slightly slow produces similar small negative values. After z-score normalization, they all collapse to near zero. No gradient. The model was learning correctness but not speed, and there was nothing in the loss curves to tell us why. The fix was one character. Test your reward function independently before attaching a model to it.
+**Test the reward function before touching a model.** The formula `speedup - 1.0` vs `max(0, speedup - 1.0)` is a one-character difference. With the wrong version, slower-than-compiler assembly gets a small negative reward. In GRPO, when all 8 completions in a group are equally slow, they normalize to near zero — no gradient. The model learns correctness but not speed, and the training curves look fine the entire time. Test your reward function independently on known inputs before attaching a model.
 
-**LLVM version has a hard dependency for ARM.** LLVM 17's Neoverse V2 scheduling model had the processor's issue-width wrong: 16 microoperations per cycle instead of the correct 8. Training on this would teach the model to optimize for a processor that does not exist. We pinned LLVM 21 specifically because of this correction.
+**LLVM version is a hard dependency.** LLVM 17's Neoverse V2 scheduling model had the processor's issue-width wrong: 16 micro-ops per cycle instead of 8. Training on that would teach the model to optimize for a processor that does not exist. We pinned LLVM 21.
 
-**Thinking models fail on assembly generation.** SuperCoder's benchmark found DeepSeek-R1 compiles at 0% across all 200 evaluation problems. The chain-of-thought habit causes the model to spend its entire output budget reasoning about instruction semantics - and never producing executable code. This is a known failure mode for reasoning-heavy models on generation tasks. The base model for assembly RL should not be a reasoning model.
+**Thinking models fail on assembly generation.** SuperCoder's benchmark found DeepSeek-R1 compiles at 0% across all 200 evaluation problems. Chain-of-thought causes the model to spend its entire output budget reasoning about instruction semantics — and never producing executable code. Do not start assembly RL with a reasoning model.
 
-**Correct EOS token alignment is not optional.** Qwen2.5 uses `<|im_end|>` as its chat end-of-turn token, but TRL's GRPOTrainer by default reads `tokenizer.eos_token_id` for generation stopping. Without explicitly aligning these, the model never stops generating cleanly. Completions run to the token limit, producing garbage that collapses the reward signal. This required an explicit fix before training produced any useful signal at all.
-
-**GRPO needs within-group diversity.** With temperature 0.5, all completions in a group come out very similar - similar tokens, similar speedup, similar z-scores, near-zero gradient. Temperature 0.8 fixes this. More diversity means some completions try NEON vectorization, some stay scalar, some hallucinate - and the relative comparison between them becomes meaningful enough to drive learning.
-
----
-
-## Why this matters
-
-Compilers use rules. Rules are safe, general, and conservative by necessity. Reinforcement learning finds what rules cannot - the specific instruction sequences, the register orderings, the NEON patterns that extract cycles on a specific microarchitecture for a specific workload.
-
-SuperCoder proved this approach works on x86. That result is now published, citable, and reproducible. ARM is the same problem on a larger market with no existing solution.
-
-AWS, Azure, Apple, and Meta have all made major bets on ARM infrastructure. The AI inference workloads running on that infrastructure are bottlenecked by the same matrix multiply and softmax kernels we are optimizing. Any improvement compounds.
-
-Could a researcher write a paper extending SuperCoder to ARM? Yes. That paper does not exist yet. ARM-Gym is that paper in environment form.
-
----
-
-## What comes next
-
-**Silicon validation.** Every cycle count in ARM-Gym is an LLVM-MCA estimate on the Neoverse V2 model. Until we run the model's output on a physical Graviton3 machine and measure wall-clock time, these are model-predicted speedups. That validation is the step that turns "MCA speedup" into a real claim.
-
-**SVE2.** No model has been specifically trained to generate ARM SVE2 code. The Scalable Vector Extension is the highest-bandwidth path on Neoverse V2 and V3, and it is essentially unexplored territory for code generation models. The optimization potential is high and the competition is zero.
-
-**Larger models.** SuperCoder used 7B. ARM-Gym's current training targets 7B as well. The Best-of-8 sampling result from the paper (1.46x → 1.93x) suggests that scaling inference (more candidates, pick the best) is as important as scaling model size. Both directions are worth exploring.
+**Correctness is the precondition, not the target.** At 19% correctness, the model is producing assembly that fails QEMU 81% of the time. There is no speedup signal to learn from broken assembly. The most important early training milestone is not beating the compiler — it is writing assembly that runs.
 
 ---
 
 ## Try it
 
-- **Live environment:** [huggingface.co/spaces/dot-mkv/arm-gym](https://huggingface.co/spaces/dot-mkv/arm-gym)
-- **Training notebook:** `colab/arm_gym_grpo_kaggle.ipynb` - upload to Kaggle, set accelerator to T4 GPU, run all cells
-- **Paper we built on:** [SuperCoder (arXiv:2505.11480)](https://arxiv.org/abs/2505.11480)
+- **Live environment:** [kaori02-arm-gym.hf.space](https://kaori02-arm-gym.hf.space)
+- **Training notebook:** [arm_gym_grpo_colab.ipynb](https://huggingface.co/spaces/kaori02/arm-gym/blob/main/eval/arm_gym_grpo_colab.ipynb) — snippets for key training steps, dependency notes included
+- **Trained LoRA adapters (V11):** [ZDC-M01/arm-gym-v11-train-250](https://huggingface.co/ZDC-M01/arm-gym-v11-train-250)
+- **Training logs (V10 + V11):** [arm-gym-logs.zip](https://huggingface.co/spaces/kaori02/arm-gym/resolve/main/logs/arm-gym-logs.zip) (28.6 KB, CSV)
+
+**Papers this builds on:**
+- [SuperCoder — arXiv:2505.11480](https://arxiv.org/abs/2505.11480) — the direct blueprint
+- [AlphaDev — Nature 2023](https://www.nature.com/articles/s41586-023-06004-9) — RL proving faster-than-libc++ is possible
+- [LLM Compiler — arXiv:2309.07062](https://arxiv.org/abs/2309.07062) — Meta, first LLM for compiler optimization
+- [DeepSeekMath — GRPO](https://arxiv.org/abs/2402.03300) — the training algorithm
 
 ---
 
-*Meta / HuggingFace OpenEnv Hackathon India 2026 - Finals. Theme: Wild Card. Team: (dot)mkv.*
+*All speedup values are LLVM-MCA estimates on the Neoverse V2 scheduling model and have not been validated on physical silicon. Results labeled "MCA-model speedup" throughout.*
