@@ -655,12 +655,6 @@ footer{
   <h1 class="hero-title">ARM-Gym</h1>
   <p class="hero-headline">Can an AI write faster code than the world&rsquo;s best compiler?</p>
   <p class="hero-sub">A reinforcement learning environment where a language model learns to write ARM processor instructions that outperform compiler output &mdash; on the architecture powering every smartphone, every cloud data center, and the next generation of AI chips.</p>
-  <div class="tags">
-    <span class="tag tag-gold">19% &rarr; 70% Correctness</span>
-    <span class="tag tag-gold">GRPO + Qwen 7B</span>
-    <span class="tag tag-gold">Neoverse V2</span>
-    <span class="tag tag-gold">Team (dot)mkv</span>
-  </div>
   <div class="cta-row">
     <a class="cta cta-primary" href="https://huggingface.co/spaces/kaori02/arm-gym/blob/main/blog.md" target="_blank" rel="noopener">
       <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V14"/></svg>
